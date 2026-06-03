@@ -1,5 +1,4 @@
-const requireDep = require('../require-dep');
-const express = requireDep('express');
+const express = require('express');
 
 const router = express.Router();
 

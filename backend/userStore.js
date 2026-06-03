@@ -5,8 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const USERS_FILE = path.join(__dirname, '../data/users.json');
-const DATA_DIR = path.join(__dirname, '../data');
+const DATA_DIR = process.env.DATA_DIR || (process.env.VERCEL ? '/tmp/knowledge-pipeline-data' : path.join(__dirname, '../data'));
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const SECRET_FILE = path.join(DATA_DIR, '.token_secret');
 
 // ── HMAC Token Secret (persisted to disk, survives restarts) ──

@@ -1,9 +1,6 @@
-require('dotenv').config();
-
 const path = require('path');
-const requireDep = require('./require-dep');
-const express = requireDep('express');
-const cors = requireDep('cors');
+const express = require('express');
+const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const kbRoutes = require('./routes/kb');
@@ -45,8 +42,10 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Knowledge Base running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Knowledge Base running on http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;
