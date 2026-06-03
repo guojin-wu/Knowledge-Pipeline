@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Base Pipeline</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<script src="ai-settings-presets.js" defer></script>
+<script src="ai-settings-workflow.js" defer></script>
+<script src="ai-settings.js" defer></script>
+<script src="auth.js"></script>
+<script src="cron-widget.js" defer></script>
+<style>
+  /* ═══════════════════════════════════════════
+     WARM SOFT REDESIGN — Notion/Linear inspired
+     ═══════════════════════════════════════════ */
+  :root {
+    --bg: #FAF7F2 !important;
+    --bg2: #F1EDE5 !important;
+    --bg3: #FFFFFF;
+    --border: #E2DAC9 !important;
+    --border-soft: #EDE6D8;
+    --text: #2C2418 !important;
+    --text2: #6B5E4D !important;
+    --text3: #A09181 !important;
+    --accent: #FCF4CB;
+    --accent-hover: #f5eab0;
+    --accent-light: #fefdf5;
+    --accent-lighter: #fffef9;
+    --accent-strong: #e8d584;
+    --accent-text: #6b5c10;
+    --green: #6B9E7A !important;
+    --red: #C26356 !important;
+    --orange: #D4944A !important;
+    --blue: #6B8EB5 !important;
+    --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --shadow-sm: 0 1px 2px rgba(44,36,24,0.04);
+    --shadow-md: 0 2px 8px rgba(44,36,24,0.06), 0 1px 2px rgba(44,36,24,0.04);
+    --shadow-lg: 0 8px 24px rgba(44,36,24,0.08), 0 2px 6px rgba(44,36,24,0.04);
+    --radius: 14px;
+    --radius-sm: 10px;
+  }
+
+  /* ─── Global overrides ─── */
+  body { background: var(--bg) !important; font-family: var(--font) !important; -webkit-font-smoothing: antialiased !important; }
+  *, *::before, *::after { font-family: inherit !important; }
+  button, input, select, textarea { font-family: var(--font) !important; }
+  code, pre, .job-id, .log-t, .ai-rev-tid, #ragSamplePreview { font-family: 'SF Mono', SFMono-Regular, Consolas, monospace !important; }
+
+  /* ─── Nav ─── */
+  nav {
+    background: rgba(250,247,242,0.75) !important;
+    backdrop-filter: blur(16px) saturate(1.4);
+    border-bottom: 1px solid rgba(226,218,201,0.4) !important;
+    box-shadow: none !important;
+    height: 56px !important;
+    padding: 0 28px !important;
+    border-radius: 0;
+    position: sticky !important; top: 0 !important; z-index: 100 !important;
+  }
+  .nav-brand {
+    font-family: var(--font-display) !important;
+    font-size: 18px !important;
+    color: var(--text) !important;
+    letter-spacing: -0.3px;
+  }
+  .nav-links a {
+    color: var(--text3) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    border-radius: 8px !important;
+    padding: 6px 14px !important;
+    transition: all 0.2s ease !important;
+  }
+  .nav-links a:hover { background: var(--accent-lighter) !important; color: var(--text2) !important; }
+  .nav-links a.active {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    font-weight: 600 !important;
+    border: 1px solid var(--accent-strong);
+  }
+  .nav-settings-btn {
+    color: var(--text2) !important;
+    border-color: var(--border) !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+    padding: 6px 14px !important;
+  }
+  .nav-settings-btn:hover { background: var(--accent-lighter) !important; border-color: var(--accent-text) !important; color: var(--accent-text) !important; }
+
+  /* ─── Sidebar ─── */
+  .kb-menu-item {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--text3) !important;
+    border-radius: 12px !important;
+    padding: 11px 16px !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+    max-width: 100% !important;
+    position: relative;
+    letter-spacing: 0.1px;
+  }
+  .kb-menu-item:hover { background: rgba(107,92,16,0.04) !important; color: var(--text) !important; }
+  .kb-menu-item.active {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    font-weight: 600 !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(232,213,132,0.3);
+  }
+  html[data-kb-view] .kb-menu-item.active { background: transparent !important; color: var(--text3) !important; box-shadow: none; }
+  html[data-kb-view="overview"] .kb-menu-item[data-view="overview"],
+  html[data-kb-view="analysis"] .kb-menu-item[data-view="analysis"],
+  html[data-kb-view="quality-review"] .kb-menu-item[data-view="quality-review"],
+  html[data-kb-view="rag-ingestion"] .kb-menu-item[data-view="rag-ingestion"],
+  html[data-kb-view="llm-evaluation"] .kb-menu-item[data-view="llm-evaluation"] {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    font-weight: 600 !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(232,213,132,0.3);
+  }
+
+  /* ─── Section cards ─── */
+  .section-card {
+    background: rgba(255,255,255,0.65) !important;
+    border: 1px solid rgba(226,218,201,0.45) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 8px rgba(44,36,24,0.04) !important;
+    padding: 24px 26px !important;
+    backdrop-filter: blur(12px);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+  .section-card:hover {
+    box-shadow: 0 8px 32px rgba(44,36,24,0.08) !important;
+    border-color: rgba(232,213,132,0.35) !important;
+  }
+  .section-label {
+    color: var(--accent-text) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1.2px !important;
+    text-transform: uppercase !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding-bottom: 12px !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* ─── Buttons ─── */
+  .btn { border-radius: 12px !important; font-weight: 600 !important; transition: all 0.2s ease !important; letter-spacing: 0.2px; }
+  .btn-go {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%) !important;
+    color: var(--accent-text) !important;
+    border: 1px solid var(--accent-strong) !important;
+    box-shadow: 0 2px 6px rgba(232,213,132,0.25);
+  }
+  .btn-go:hover { background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-strong) 100%) !important; box-shadow: 0 3px 10px rgba(232,213,132,0.35); transform: translateY(-1px); }
+  .btn-alt {
+    background: var(--bg3) !important;
+    color: var(--text2) !important;
+    border: 1px solid var(--border) !important;
+  }
+  .btn-alt:hover { border-color: var(--accent-text) !important; color: var(--accent-text) !important; background: var(--accent-lighter) !important; }
+  .btn-stop { border-color: var(--red) !important; }
+
+  /* ─── Dots ─── */
+  .dot { background: var(--accent-strong) !important; }
+  .dot.ok { background: var(--green) !important; }
+  .dot.err { background: var(--red) !important; }
+  .dot.warn { background: var(--orange) !important; }
+  .ai-dot { background: var(--text3) !important; }
+  .ai-dot.ok { background: var(--green) !important; }
+
+  /* ─── Progress bars ─── */
+  .prog-fill { background: linear-gradient(90deg, var(--accent-strong) 0%, var(--accent) 100%) !important; border-radius: 6px !important; transition: width 0.4s ease; }
+  .qa-progress-fill { background: linear-gradient(90deg, var(--accent-strong) 0%, var(--accent) 100%) !important; border-radius: 6px !important; transition: width 0.4s ease; }
+  .prog-track { background: var(--bg2) !important; border-radius: 6px !important; height: 6px !important; }
+  .qa-progress-track { background: var(--bg2) !important; border-radius: 6px !important; height: 6px !important; }
+
+  /* ─── Pipeline tracker ─── */
+  .pipe-tracker { padding: 16px 0 !important; }
+  .pipe-dot { border-color: var(--border) !important; width: 14px !important; height: 14px !important; }
+  .pipe-dot.done { border-color: var(--accent-strong) !important; background: var(--accent-strong) !important; box-shadow: 0 0 8px rgba(232,213,132,0.4); }
+  .pipe-name { font-size: 10px !important; letter-spacing: 0.8px !important; }
+  .pipe-name.done { color: var(--accent-text) !important; font-weight: 700 !important; }
+  .pipe-line { border-radius: 3px !important; }
+  .pipe-line.done { background: linear-gradient(90deg, var(--accent-strong) 0%, var(--accent) 100%) !important; }
+
+  /* ─── Metrics ─── */
+  .ov-metric {
+    border: none !important;
+    background: linear-gradient(145deg, var(--bg3) 0%, var(--bg) 100%) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 8px rgba(44,36,24,0.04);
+    padding: 14px 16px !important;
+    border-left: 3px solid var(--accent-strong) !important;
+    transition: transform 0.2s ease;
+  }
+  .ov-metric:hover { transform: translateY(-2px); }
+  .ov-metric .ov-val { color: var(--text) !important; font-size: 22px !important; font-weight: 700 !important; }
+  .ov-metric .ov-lbl { font-size: 10px !important; letter-spacing: 0.5px !important; text-transform: uppercase !important; }
+  .ov-bar-fill { background: linear-gradient(90deg, var(--accent-strong) 0%, var(--accent) 100%) !important; border-radius: 6px !important; }
+  .stat {
+    border: none !important;
+    background: linear-gradient(145deg, var(--bg3) 0%, var(--bg) 100%) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 8px rgba(44,36,24,0.04);
+    border-left: 3px solid var(--accent-strong) !important;
+  }
+  .stat:hover { border: none !important; box-shadow: var(--shadow-md); transform: translateY(-2px); border-left: 3px solid var(--accent-strong) !important; }
+  .stat-val { color: var(--text) !important; font-weight: 700 !important; }
+
+  /* ─── Confidence bar ─── */
+  .conf-bar { border-radius: 6px !important; }
+  .conf-bar .seg-high { background: var(--accent-strong) !important; }
+  .conf-bar .seg-medium { background: var(--border) !important; }
+
+  /* ─── Score circle ─── */
+  .score-circle { border-color: var(--accent-strong) !important; border-width: 3px !important; box-shadow: 0 0 12px rgba(232,213,132,0.2); }
+  .score-circle .score-num { color: var(--accent-text) !important; font-weight: 800 !important; }
+  .score-bar-fill { background: linear-gradient(90deg, var(--accent-strong) 0%, var(--accent) 100%) !important; border-radius: 6px !important; }
+  .score-grade { color: var(--accent-text) !important; font-weight: 700 !important; }
+
+  /* ─── Pipeline steps ─── */
+  .step-num { border-color: var(--border) !important; background: var(--bg) !important; border-radius: 10px !important; font-weight: 700 !important; }
+  .pipeline-step-row.completed .step-num { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%) !important; color: var(--accent-text) !important; border-color: var(--accent-strong) !important; box-shadow: 0 2px 6px rgba(232,213,132,0.25); }
+  .pipeline-step-row.active .step-num { background: var(--accent-light) !important; color: var(--accent-text) !important; border-color: var(--accent-strong) !important; }
+  .pipeline-step-row.running .step-num { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%) !important; color: var(--accent-text) !important; }
+  @keyframes pulse-ring { 0%{box-shadow:0 0 0 0 rgba(232,213,132,0.4)} 70%{box-shadow:0 0 0 8px rgba(232,213,132,0)} 100%{box-shadow:0 0 0 0 rgba(232,213,132,0)} }
+  .pipeline-step-row { border-color: var(--border-soft) !important; padding: 12px 0 !important; }
+  .pipeline-baseline { background: var(--bg) !important; border-radius: 14px !important; }
+
+  /* ─── AI step chips ─── */
+  .ai-step-chip.active {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-color: var(--accent-text) !important;
+    box-shadow: 0 2px 6px rgba(107,92,16,0.12);
+  }
+
+  /* ─── Norm phase stepper ─── */
+  .norm-phase-step.active { background: var(--accent) !important; color: var(--accent-text) !important; }
+  .norm-phase-step.done { background: #e4f0e7 !important; color: var(--green) !important; }
+  .norm-phase-step { background: var(--bg) !important; border-radius: 20px !important; }
+
+  /* ─── Preset tabs ─── */
+  .ai-preset-tabs { border-color: var(--border) !important; border-radius: 10px !important; }
+  .ai-preset-tab { background: var(--bg) !important; color: var(--text3) !important; }
+  .ai-preset-tab.active { background: var(--accent) !important; color: var(--accent-text) !important; }
+  .ai-preset-tab:hover { background: var(--accent-lighter) !important; }
+
+  /* ─── Checkbox ─── */
+  .ai-check input[type="checkbox"] { accent-color: var(--accent-text) !important; }
+
+  /* ─── Rule tags ─── */
+  .rule-tag { background: var(--accent-lighter) !important; color: var(--accent-text) !important; }
+
+  /* ─── Focus states ─── */
+  .qa-search-box:focus { border-color: var(--accent-text) !important; box-shadow: 0 0 0 3px rgba(107,92,16,0.08) !important; }
+  .ai-input:focus { border-color: var(--accent-text) !important; box-shadow: 0 0 0 3px rgba(107,92,16,0.08) !important; }
+  .field input:focus, .input:focus { border-color: var(--accent-text) !important; box-shadow: 0 0 0 3px rgba(107,92,16,0.08) !important; }
+
+  /* ─── AI Review cards ─── */
+  .ai-rev-card {
+    border-radius: 16px !important;
+    border: 1px solid rgba(226,218,201,0.4) !important;
+    box-shadow: 0 2px 8px rgba(44,36,24,0.03) !important;
+    background: var(--bg3) !important;
+    border-left: 4px solid var(--border-soft) !important;
+    transition: all 0.2s ease;
+  }
+  .ai-rev-card:hover { box-shadow: 0 4px 16px rgba(44,36,24,0.06) !important; transform: translateY(-1px); }
+  .ai-rev-card.mode-flagged { border-left-color: var(--red) !important; }
+  .ai-rev-card.mode-rescue { border-left-color: var(--blue) !important; }
+  .ai-rev-card.mode-edit { border-left-color: var(--orange) !important; }
+  .ai-rev-actions button.accepted { background: var(--accent) !important; color: var(--accent-text) !important; border-color: var(--accent-strong) !important; }
+  .ai-rev-ktype { color: var(--accent-text) !important; background: var(--accent-lighter) !important; }
+  .ai-rev-verdict.keep { background: rgba(107,158,122,0.08) !important; color: var(--green) !important; }
+  .ai-rev-verdict.remove { background: rgba(194,99,86,0.08) !important; color: var(--red) !important; }
+
+  /* ─── Upload zone ─── */
+  .upload-zone {
+    border: 1.5px dashed var(--border) !important;
+    border-radius: 10px !important;
+    background: var(--bg) !important;
+    padding: 10px 14px !important;
+    transition: all 0.2s ease;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent-strong) !important;
+    background: linear-gradient(145deg, var(--accent-lighter) 0%, rgba(252,244,203,0.3) 100%) !important;
+    box-shadow: 0 4px 16px rgba(232,213,132,0.15);
+    transform: translateY(-2px);
+  }
+
+  /* ─── QA tabs ─── */
+  .qa-tab { color: var(--text3) !important; border-bottom: 2px solid transparent !important; }
+  .qa-tab:hover { color: var(--text2) !important; }
+  .qa-tab.active { color: var(--accent-text) !important; border-bottom-color: var(--accent-text) !important; }
+
+  /* ─── QA entry ─── */
+  .qa-entry-tid { color: var(--accent-text) !important; }
+  .qa-entry-item:hover { background: var(--accent-lighter) !important; }
+
+  /* ─── QA log ─── */
+  .qa-log { background: var(--bg) !important; border-radius: 10px !important; }
+  .qa-log-tag.pipe { color: var(--accent-text) !important; background: var(--accent-lighter) !important; }
+  .qa-log-tag.clean { background: var(--bg3) !important; }
+  .qa-log-tag.rescue { color: var(--orange) !important; }
+
+  /* ─── QA stat cards ─── */
+  .qa-stat-card { border-color: var(--border-soft) !important; border-radius: 12px !important; }
+
+  /* ─── Version dots ─── */
+  .version-dot.safe { background: var(--green) !important; }
+  .version-dot.warn { background: var(--orange) !important; }
+
+  /* ─── Log ─── */
+  .log-wrap {
+    border: 1px solid rgba(226,218,201,0.4) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 16px rgba(44,36,24,0.04) !important;
+    background: var(--bg3) !important;
+    overflow: hidden;
+  }
+  .log-head { border-color: var(--border-soft) !important; background: linear-gradient(135deg, var(--bg) 0%, var(--accent-lighter) 100%) !important; }
+
+  /* ─── Toast ─── */
+  .toast { border: none !important; box-shadow: 0 8px 32px rgba(44,36,24,0.12) !important; border-radius: 16px !important; backdrop-filter: blur(8px); }
+
+  /* ─── Tables ─── */
+  .preview-table { border-radius: 12px !important; overflow: hidden; }
+  .preview-table th { background: linear-gradient(135deg, var(--bg) 0%, var(--accent-lighter) 100%) !important; color: var(--text3) !important; font-size: 10px !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; }
+  .profile-table { border-color: var(--border-soft) !important; border-radius: 14px !important; overflow: hidden; }
+  .profile-table th { background: linear-gradient(135deg, var(--bg) 0%, var(--accent-lighter) 100%) !important; }
+  .qa-issues-table th { color: var(--text3) !important; border-color: var(--border-soft) !important; font-size: 10px !important; text-transform: uppercase !important; }
+
+  /* ─── Prompt manager ─── */
+  .prompt-manager select { background: var(--bg) !important; border-radius: 10px !important; }
+  .prompt-manager select:focus { border-color: var(--accent-text) !important; box-shadow: 0 0 0 3px rgba(107,92,16,0.08) !important; }
+  .prompt-manager textarea { background: var(--bg) !important; border-radius: 10px !important; }
+  .prompt-manager textarea:focus { border-color: var(--accent-text) !important; box-shadow: 0 0 0 3px rgba(107,92,16,0.08) !important; }
+  .prompt-manager .prompt-title-input { background: var(--bg) !important; border-radius: 10px !important; }
+  .prompt-manager .prompt-title-input:focus { border-color: var(--accent-text) !important; box-shadow: 0 0 0 3px rgba(107,92,16,0.08) !important; }
+
+  /* ─── Dropdowns ─── */
+  .ai-dropdown-btn { border-color: var(--border) !important; border-radius: 10px !important; }
+  .ai-dropdown-btn:hover { border-color: var(--accent-text) !important; }
+  .ai-dropdown-menu { border-color: var(--border) !important; border-radius: 10px !important; box-shadow: var(--shadow-lg) !important; background: var(--bg3) !important; }
+  .ai-dropdown-item:hover { background: var(--accent-lighter) !important; }
+  .ai-dropdown-item.active { color: var(--accent-text) !important; }
+
+  /* ─── Confirm overlay ─── */
+  .confirm-card {
+    border: 1px solid rgba(226,218,201,0.4) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 16px 48px rgba(44,36,24,0.15) !important;
+    backdrop-filter: blur(12px);
+  }
+
+  /* ─── Btn-sm ─── */
+  .btn-sm { border-radius: 8px !important; border-color: var(--border) !important; }
+  .btn-sm:hover:not(:disabled) { border-color: var(--accent-text) !important; color: var(--accent-text) !important; }
+  .btn-sm.download { color: var(--accent-text) !important; }
+  .btn-sm.download:hover:not(:disabled) { background: var(--accent-lighter) !important; border-color: var(--accent-text) !important; }
+
+  /* ─── Ingestion file chips ─── */
+  #view-ingestion .file-history-chip { border-color: var(--border-soft) !important; border-radius: 999px !important; background: var(--bg) !important; }
+
+  /* ─── Warn items ─── */
+  .warn-item { border-color: var(--border-soft) !important; background: var(--bg) !important; border-radius: 8px !important; }
+
+  /* ─── Diff view ─── */
+  .diff-col.before { background: rgba(194,99,86,0.06) !important; }
+  .diff-col.after { background: rgba(107,158,122,0.06) !important; }
+  .ai-rev-diff { border-left-color: var(--accent-text) !important; background: var(--bg) !important; border-radius: 8px !important; }
+
+  /* ─── Embed card ─── */
+  .embed-card { border: 1px solid rgba(226,218,201,0.4) !important; border-radius: 20px !important; box-shadow: 0 4px 16px rgba(44,36,24,0.04) !important; overflow: hidden; }
+  .embed-head { border-color: var(--border-soft) !important; background: linear-gradient(135deg, var(--bg3) 0%, var(--accent-lighter) 100%) !important; font-weight: 700 !important; letter-spacing: 0.5px; }
+
+  /* ─── LAYOUT ─── */
+  .layout {
+    display:grid;
+    grid-template-columns:240px 1fr;
+    height:calc(100vh - 54px);
+  }
+  .layout.kb-collapsed { grid-template-columns:0 1fr; }
+
+  /* ─── LEFT PANEL ─── */
+  .panel-left {
+    position:relative;
+    border-right: 1px solid rgba(226,218,201,0.4);
+    overflow-y:auto;
+    padding:24px 14px;
+    padding-bottom:72px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(250,247,242,0.9) 100%);
+    backdrop-filter: blur(12px);
+    transition:margin-left 0.2s ease;
+    box-shadow: 1px 0 0 var(--border-soft);
+  }
+  .layout.kb-collapsed .panel-left { margin-left:-240px; }
+  .panel-left::-webkit-scrollbar { width:0; }
+  .section-card .section-label { margin:0 0 10px; }
+  .section-card .actions { margin-top:10px; }
+
+  /* ─── Page Summary (Hero) ─── */
+  .page-summary {
+    background: linear-gradient(145deg, var(--bg3) 0%, rgba(252,244,203,0.1) 100%);
+    border: 1px solid rgba(226,218,201,0.4);
+    color:var(--text);
+    border-radius: 24px;
+    padding: 0;
+    position:relative;
+    overflow:hidden;
+    box-shadow: var(--shadow-md);
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    min-height: 340px;
+  }
+  .page-summary::after { display:none; }
+  .hero-left {
+    padding: 40px 36px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .hero-right {
+    background: linear-gradient(135deg, #f8f5f0 0%, #f0ebe3 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 20px;
+    border-left: 1px solid var(--border-soft);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-right::before {
+    content: '';
+    position: absolute;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(107,92,16,0.05) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .page-summary-label {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 14px;
+    border-radius:999px;
+    background: rgba(107,92,16,0.08);
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:0.6px;
+    text-transform:uppercase;
+    color: var(--accent-text);
+    width: fit-content;
+  }
+  .page-summary-dot {
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background: var(--accent-strong);
+  }
+  .page-summary h1 {
+    margin:22px 0 0;
+    font-family: var(--font-display);
+    font-size:34px;
+    font-weight:400;
+    line-height:1.12;
+    letter-spacing:-0.3px;
+    max-width:440px;
+    color: var(--text);
+  }
+  .page-summary p {
+    margin:16px 0 0;
+    max-width:400px;
+    color:var(--text2);
+    font-size:14px;
+    line-height:1.7;
+  }
+  .page-summary-strip {
+    margin-top:24px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .page-summary-chip {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 14px;
+    border-radius:10px;
+    background: rgba(107,92,16,0.06);
+    color: var(--accent-text);
+    font-size:12px;
+    font-weight:500;
+  }
+  .page-proof {
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:12px;
+    margin-top:18px;
+  }
+  .page-proof-card {
+    background:rgba(255,255,255,0.64);
+    border:1px solid rgba(226,218,201,0.55);
+    border-radius:14px;
+    padding:13px 14px 12px;
+    box-shadow:0 2px 8px rgba(44,36,24,0.04);
+  }
+  .page-proof-card strong {
+    display:block;
+    color:var(--text);
+    font-size:18px;
+    line-height:1.05;
+    letter-spacing:-0.4px;
+  }
+  .page-proof-card span {
+    display:block;
+    margin-top:5px;
+    color:var(--text3);
+    font-size:11px;
+    line-height:1.5;
+  }
+  @media (max-width:960px) {
+    .page-summary { grid-template-columns:1fr; min-height:auto; }
+    .hero-right { min-height:260px; border-left:none; border-top:1px solid var(--border-soft); }
+    .page-proof { grid-template-columns:1fr; }
+  }
+
+  /* ─── Merged Sub-Tabs ─── */
+  .merged-sub-tabs {
+    display: inline-flex;
+    gap: 4px;
+    background: transparent;
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .merged-sub-tab {
+    padding: 9px 28px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    background: transparent;
+    color: var(--text3);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.01em;
+    position: relative;
+  }
+  .merged-sub-tab:hover { background: var(--bg3); color: var(--text2); }
+  .merged-sub-tab.active {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(232,213,132,0.3);
+  }
+  .merged-sub-panel { display: none; }
+  .merged-sub-panel.active { display: block; }
+
+  /* ─── Pipeline Flow SVG ─── */
+  .pipeline-flow-svg { width:100%; max-width:440px; height:auto; position:relative; z-index:1; }
+
+  /* ─── Sidebar icons ─── */
+  .kb-menu-item .menu-icon {
+    width:16px; height:16px; flex-shrink:0; opacity:0.5;
+    display:inline-block; vertical-align:-2px; margin-right:8px;
+  }
+  .kb-menu-item:hover .menu-icon { opacity:0.7; }
+  html[data-kb-view] .kb-menu-item .menu-icon { opacity:0.4; }
+  html[data-kb-view="overview"] .kb-menu-item[data-view="overview"] .menu-icon,
+  html[data-kb-view="analysis"] .kb-menu-item[data-view="analysis"] .menu-icon,
+  html[data-kb-view="quality-review"] .kb-menu-item[data-view="quality-review"] .menu-icon,
+  html[data-kb-view="rag-ingestion"] .kb-menu-item[data-view="rag-ingestion"] .menu-icon,
+  html[data-kb-view="llm-evaluation"] .kb-menu-item[data-view="llm-evaluation"] .menu-icon {
+    opacity:0.8;
+  }
+
+  /* Upload */
+  .upload-zone {
+    border:1.5px dashed var(--border);
+    border-radius:10px;
+    padding:10px 14px;
+    text-align:center;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    position:relative;
+    background: var(--bg);
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color:var(--accent);
+    background:var(--accent-lighter);
+  }
+  .upload-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .upload-title { font-size:13px; color:var(--text2); }
+  .upload-title strong { color:var(--text); }
+  .upload-hint { font-size:11px; color:var(--text3); margin-top:3px; }
+
+  .file-info { display:none; background:var(--bg); border-radius:10px; padding:8px 14px; margin-top:8px; font-size:12px; }
+  .file-info.on { display:flex; align-items:center; gap:8px; }
+  .file-name { font-weight:600; color:var(--text); flex:1; word-break:break-all; font-size:12px; }
+  .file-size { color:var(--text3); font-size:11px; white-space:nowrap; }
+  .file-rm { color:var(--red); cursor:pointer; font-size:14px; font-weight:bold; padding:2px 4px; border-radius:4px; }
+  .file-rm:hover { background:rgba(255,69,58,0.06); }
+
+  /* Buttons (local overrides) */
+  .actions { display:flex; gap:8px; margin-top:12px; }
+  .actions .btn { flex:1; padding:9px 0; }
+
+  /* Jobs */
+  .jobs-list { max-height:180px; overflow-y:auto; }
+  .jobs-list::-webkit-scrollbar { width:2px; }
+  .jobs-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:1px; }
+  .jobs-empty { text-align:center; color:var(--text3); font-size:12px; padding:10px 0; }
+  .job-row {
+    display:flex; align-items:center; gap:8px;
+    padding:7px 0; border-bottom:1px solid var(--border);
+    font-size:12px; cursor:pointer; transition:all 0.1s;
+  }
+  .job-row:hover { background:var(--bg2); margin:0 -4px; padding:7px 4px; border-radius:4px; }
+  .job-row:last-child { border-bottom:none; }
+  .job-id { font-family:'SF Mono',monospace; font-weight:600; color:var(--text3); min-width:50px; font-size:11px; }
+  .job-file { flex:1; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .job-st {
+    font-size:9px; font-weight:700; text-transform:uppercase;
+    padding:1px 6px; border-radius:6px; letter-spacing:0.3px;
+  }
+  .job-st.completed { color:var(--green); background:rgba(107,158,122,0.08); border:1px solid rgba(107,158,122,0.15); }
+  .job-st.error { color:var(--red); background:rgba(194,99,86,0.07); }
+  .job-st.running { color:var(--accent); background:var(--accent-lighter); border:1px solid rgba(107,92,16,0.1); }
+  .confirm-overlay {
+    position:fixed;
+    inset:0;
+    z-index:1200;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.28);
+    backdrop-filter:blur(2px);
+    padding:24px;
+  }
+  .confirm-overlay.open { display:flex; }
+  .confirm-card {
+    width:min(520px, 100%);
+    background:var(--bg3);
+    border:none;
+    border-radius:20px;
+    box-shadow:0 18px 48px rgba(44,36,24,0.16);
+    padding:28px 28px 22px;
+  }
+  .confirm-title {
+    font-size:18px;
+    font-weight:700;
+    color:var(--text);
+    margin:0 0 10px;
+  }
+  .confirm-copy {
+    font-size:14px;
+    line-height:1.6;
+    color:var(--text2);
+    margin:0;
+  }
+  .confirm-file {
+    margin:14px 0 0;
+    padding:12px 14px;
+    border-radius:12px;
+    background:var(--bg);
+    border:none;
+    font-size:15px;
+    font-weight:600;
+    color:var(--text);
+    word-break:break-word;
+  }
+  .confirm-note {
+    margin:14px 0 0;
+    font-size:12px;
+    line-height:1.5;
+    color:var(--text3);
+  }
+  .confirm-actions {
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:18px;
+  }
+  .confirm-actions .btn {
+    min-width:108px;
+  }
+  /* ─── RIGHT PANEL ─── */
+  .panel-right { position:relative; overflow-y:auto; background:var(--bg); }
+  .panel-right::-webkit-scrollbar { width:0; }
+  .kb-toggle {
+    position:absolute; left:0; top:50%; transform:translateY(-50%);
+    width:20px; height:40px; background:var(--bg3); border:1px solid var(--border-soft);
+    border-left:none; border-radius:0 8px 8px 0;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    z-index:5; color:var(--text3); font-size:24px; font-weight:700;
+    transition:all 0.2s ease;
+    box-shadow: 2px 0 4px rgba(44,36,24,0.04);
+  }
+  .kb-toggle:hover { color:var(--accent); background:var(--accent-lighter); }
+  .kb-view { display:none; }
+  .kb-view.active { display:block; }
+  html[data-kb-view] .kb-view { display:none; }
+  html[data-kb-view="overview"] #view-overview,
+  html[data-kb-view="analysis"] #view-analysis,
+  html[data-kb-view="cleaning"] #view-cleaning,
+  html[data-kb-view="quality-review"] #view-quality-review,
+  html[data-kb-view="rag-ingestion"] #view-rag-ingestion,
+  html[data-kb-view="llm-evaluation"] #view-llm-evaluation { display:block; }
+  /* kb-menu-item active states handled by amber theme overrides above */
+  /* .overview-wrap/stack, .pipe-*, .ov-metrics/metric → shared.css */
+
+  /* ─── Confidence Bar ─── */
+  .conf-bar { display:flex; height:8px; border-radius:6px; overflow:hidden; width:100%; }
+  .conf-bar .seg-high { background:var(--accent); }
+  .conf-bar .seg-medium { background:var(--border); }
+  .conf-bar .seg-low { background:var(--bg2); }
+  .conf-legend { display:flex; gap:12px; margin-top:6px; }
+  .conf-legend span { font-size:10px; color:var(--text3); display:flex; align-items:center; gap:3px; }
+  .conf-legend .dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+
+  /* ─── Issue Type Bar Chart ─── */
+  .ov-bar-chart { display:flex; flex-direction:column; gap:5px; }
+  .ov-bar-row { display:flex; align-items:center; gap:6px; }
+  .ov-bar-label { font-size:10px; color:var(--text2); width:110px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+  .ov-bar-track { flex:1; height:6px; background:var(--bg2); border-radius:3px; overflow:hidden; }
+  .ov-bar-fill { height:100%; border-radius:3px; background:var(--accent); }
+  .ov-bar-val { font-size:10px; color:var(--text3); width:28px; flex-shrink:0; }
+
+  /* ─── Warnings & Next Action ─── */
+  .warn-list { display:flex; flex-direction:column; gap:6px; }
+  /* .warn-item → shared.css */
+  .warn-item.ok { color:var(--text3); }
+  .next-action { font-size:12px; color:var(--text2); line-height:1.6; }
+  .infra-wrap { padding:24px; }
+  .embed-wrap { padding:24px; height:calc(100vh - 48px); }
+  .embed-card { height:100%; border:1px solid var(--border); border-radius:10px; background:var(--bg); overflow:hidden; }
+  .embed-head { padding:10px 14px; border-bottom:1px solid var(--border); font-size:12px; font-weight:600; color:var(--text); }
+  .embed-frame { width:100%; height:calc(100% - 40px); border:0; background:var(--bg); }
+
+  /* .stats, .stat, .stat-val, .stat-lbl → shared.css */
+
+  /* Progress */
+  .prog { padding:0 24px 24px; }
+  .prog-inner { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+  .prog-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .prog-label { font-size:12px; font-weight:600; color:var(--text); }
+  .prog-pct { font-size:12px; font-weight:700; color:var(--text); }
+  .prog-track { height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .prog-fill { height:100%; background:var(--accent); border-radius:4px; transition:width 0.4s ease; width:0%; }
+  .prog-phase { font-size:11px; color:var(--text3); margin-top:6px; }
+
+  /* Data profiling */
+  .profile-empty { font-size:12px; color:var(--text3); padding:2px 0 6px; }
+  .profile-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  /* .profile-table → shared.css */
+
+  /* ─── Cleaning page: toggle switches ─── */
+  .rule-grid { display:flex; flex-direction:column; gap:6px; }
+  .rule-row {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 10px; border:1px solid var(--border); border-radius:8px;
+    font-size:12px; transition:all 0.15s;
+  }
+  .rule-row.disabled { opacity:0.45; }
+  .rule-label { font-weight:600; color:var(--text); }
+  .rule-desc { color:var(--text2); font-size:11px; }
+
+  /* ─── Cleaning page: preview table ─── */
+  .preview-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .preview-table th {
+    text-align:left; padding:8px 10px; font-size:10px; font-weight:600;
+    color:var(--text2); text-transform:uppercase; letter-spacing:0.3px;
+    border-bottom:1px solid var(--border); background:var(--bg2);
+    position:sticky; top:0;
+  }
+  .preview-table td {
+    padding:8px 10px; border-bottom:1px solid rgba(0,0,0,0.04);
+    vertical-align:top; max-width:300px;
+  }
+  .cell-text {
+    white-space:pre-wrap; word-break:break-word; max-height:80px; overflow:hidden;
+    font-family:'SF Mono',monospace; font-size:10px; line-height:1.4;
+    color:var(--text2);
+  }
+  .rules-applied { display:flex; flex-wrap:wrap; gap:3px; }
+  .rule-tag {
+    font-size:9px; font-weight:600; padding:1px 5px; border-radius:4px;
+    background:var(--accent-lighter); color:var(--accent); white-space:nowrap;
+  }
+  .rule-tag .delta { color:var(--red); margin-left:3px; }
+
+  /* ─── Step diff view ─── */
+  .diff-card { border-bottom: 1px solid var(--border); padding: 10px 12px; }
+  .diff-card:last-child { border-bottom: none; }
+  .diff-meta { font-size: 10px; color: var(--text3); margin-bottom: 6px; }
+  .diff-meta strong { color: var(--text2); }
+  .diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .diff-col {
+    font-family: 'SF Mono', monospace; font-size: 10px; line-height: 1.4;
+    white-space: pre-wrap; word-break: break-word;
+    padding: 8px; border-radius: 6px; max-height: 150px; overflow-y: auto;
+  }
+  .diff-col.before { background: rgba(255,59,48,0.05); color: var(--text2); }
+  .diff-col.after { background: rgba(52,199,89,0.05); color: var(--text); }
+  .diff-label { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--text3); margin-bottom: 3px; }
+  .btn-sm.diff { color: var(--accent-text); }
+  .btn-sm.diff:hover:not(:disabled) { background: var(--accent-lighter); border-color: var(--accent-text); }
+
+  /* ─── QA Clean Pipeline: new styles ─── */
+  /* ── Normalize phase stepper ── */
+  .norm-phases { display:flex; align-items:center; gap:0; margin-bottom:10px; }
+  .norm-phase-step { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:4px 12px; border-radius:20px; color:var(--text3); background:var(--bg); transition:all 0.2s; }
+  .norm-phase-step.active { background:var(--accent); color:var(--accent-text); }
+  .norm-phase-step.done { background:rgba(107,158,122,0.1); color:var(--green); }
+  .norm-phase-step.done::before { content:'✓ '; }
+  .norm-phase-arrow { font-size:10px; color:var(--border); padding:0 4px; flex-shrink:0; }
+
+  .qa-progress-track { height:4px; background:var(--bg2); border-radius:2px; overflow:hidden; margin:10px 0 6px; }
+  .qa-progress-fill { height:100%; background:var(--accent); border-radius:4px; transition:width 0.4s ease; width:0%; }
+  .qa-progress-meta { display:flex; justify-content:space-between; font-size:11px; color:var(--text2); }
+
+  .qa-log { max-height:240px; overflow-y:auto; font-family:'SF Mono',monospace; font-size:11px; line-height:1.7; padding:10px 12px; background:var(--bg2); border-radius:8px; margin-top:10px; }
+  .qa-log::-webkit-scrollbar { width:2px; }
+  .qa-log::-webkit-scrollbar-thumb { background:var(--border); }
+  .qa-log-entry { display:flex; align-items:center; gap:8px; padding:2px 0; }
+  .qa-log-time { color:var(--text3); min-width:60px; font-size:10px; }
+  .qa-log-tag { font-size:9px; font-weight:700; text-transform:uppercase; min-width:48px; text-align:center; padding:2px 6px; border-radius:3px; line-height:1.4; display:inline-flex; align-items:center; justify-content:center; }
+  .qa-log-tag.clean { color:var(--text2); background:var(--bg); }
+  .qa-log-tag.remove { color:#999; background:rgba(0,0,0,0.04); }
+  .qa-log-tag.rescue { color:#a08000; background:rgba(0,0,0,0.04); }
+  .qa-log-tag.info { color:var(--text3); background:var(--bg); }
+  .qa-log-tag.pipe { color:var(--accent); background:var(--accent-lighter); }
+  .qa-log-msg { color:var(--text2); word-break:break-word; }
+  .qa-log-sep { border:none; border-top:1px solid var(--border); margin:8px 0; }
+
+  .qa-stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .qa-stat-card { border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center; }
+  .qa-stat-val { font-size:22px; font-weight:700; line-height:1; margin-bottom:4px; }
+  .qa-stat-val.green { color:var(--green); }
+  .qa-stat-val.red { color:var(--red); }
+  .qa-stat-val.blue { color:var(--blue); }
+  .qa-stat-lbl { font-size:10px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.3px; }
+
+  .qa-issues-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .qa-issues-table th { text-align:left; padding:6px 10px; border-bottom:2px solid var(--border); font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.3px; }
+  .qa-issues-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
+  .qa-issues-table tr:hover { background:var(--bg2); }
+
+  /* .qa-tabs, .qa-tab → shared.css */
+  .qa-tab-content { display:none; }
+  .qa-tab-content.active { display:block; }
+
+  .qa-entry-browser { max-height:400px; overflow-y:auto; }
+  .qa-entry-browser::-webkit-scrollbar { width:2px; }
+  .qa-entry-browser::-webkit-scrollbar-thumb { background:var(--border); }
+  .qa-entry-item { padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+  .qa-entry-item:hover { background:var(--bg2); }
+  .qa-entry-tid { font-size:11px; color:var(--accent); font-weight:600; }
+  .qa-entry-problem { font-size:12px; margin-top:3px; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .qa-entry-meta { display:flex; gap:10px; margin-top:4px; font-size:10px; color:var(--text3); }
+
+  .qa-search-box { width:100%; padding:8px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:var(--font); margin-bottom:10px; }
+  .qa-search-box:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(107,92,16,0.08); }
+
+  /* ─── AI Review ─── */
+  .ai-input { width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:var(--font); background:var(--bg1); color:var(--text); }
+  .ai-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(107,92,16,0.08); }
+  .ai-dropdown { display:inline-block; position:relative; }
+  .ai-dropdown-btn { display:flex; align-items:center; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:12px; font-weight:500; font-family:var(--font); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+  .ai-dropdown-btn:hover { border-color:var(--text3); }
+  .ai-dropdown-menu { display:none; position:absolute; top:calc(100% + 4px); left:0; min-width:100%; width:max-content; background:var(--bg); border:1px solid var(--border); border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.08); z-index:50; overflow:hidden; }
+  .ai-dropdown.open .ai-dropdown-menu { display:block; }
+  .ai-dropdown-item { padding:8px 14px; font-size:12px; color:var(--text2); cursor:pointer; transition:background 0.1s; }
+  .ai-dropdown-item:hover { background:var(--bg2); color:var(--text); }
+  .ai-dropdown-item.active { color:var(--text); font-weight:600; }
+  .ai-field-label { font-size:10px; color:var(--text3); display:block; margin-bottom:3px; text-transform:uppercase; letter-spacing:.3px; font-weight:500; }
+  .ai-check { font-size:11px; color:var(--text2); display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap; }
+  .ai-check input[type="checkbox"] { accent-color:var(--text); width:13px; height:13px; }
+  /* AI Settings Panel Sections */
+  .ai-settings-section { margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+  .ai-settings-section:last-of-type { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .ai-settings-section-label { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+  .ai-params-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; }
+  .ai-param-item .ai-input { text-align:center; padding:5px 4px; font-size:11px; }
+  .ai-param-item .ai-field-label { font-size:9px; text-align:center; }
+
+  /* AI Preset Tabs */
+  .ai-preset-tabs { display:flex; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .ai-preset-tab { flex:1; padding:7px 4px; font-size:11px; font-weight:500; font-family:var(--font); background:var(--bg1); color:var(--text3); border:none; cursor:pointer; transition:all 0.15s; border-right:1px solid var(--border); }
+  .ai-preset-tab:last-child { border-right:none; }
+  .ai-preset-tab:hover { background:var(--bg2); color:var(--text2); }
+  .ai-preset-tab.active { background:var(--accent); color:var(--accent-text); font-weight:600; }
+
+  @keyframes aiPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.2} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+  .ai-settings-section-toggle {
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%; background:none; border:none; cursor:pointer; padding:0;
+    font-size:11px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;
+    color:var(--text3); font-family:var(--font); transition:color 0.15s;
+  }
+  .ai-settings-section-toggle:hover { color:var(--text2); }
+  .ai-settings-section-toggle.has-active { color:var(--text); }
+  .ai-settings-section-toggle svg { transition:transform 0.15s; flex-shrink:0; }
+  .ai-settings-section-toggle.open svg { transform:rotate(90deg); }
+  .chevron.open { transform:rotate(90deg); }
+
+  .ai-rev-card { padding:12px 12px 12px 14px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; background:var(--bg1); border-left:3px solid var(--border); }
+  .ai-rev-card:hover { border-color:var(--text3); }
+  /* Mode-specific left border colors */
+  .ai-rev-card.mode-flagged { border-left-color:#c33; }
+  .ai-rev-card.mode-rescue { border-left-color:var(--blue); }
+  .ai-rev-card.mode-edit { border-left-color:#b08000; }
+  .ai-rev-card.mode-browse { border-left-color:var(--border); }
+  /* Flagged: muted text to signal pending removal */
+  .ai-rev-card.mode-flagged .ai-rev-text { color:var(--text3); }
+  .ai-rev-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .ai-rev-tid { font-size:12px; color:var(--text); font-weight:600; font-family:'SF Mono',monospace; }
+  .ai-rev-verdict { font-size:10px; font-weight:700; text-transform:uppercase; padding:2px 8px; border-radius:4px; letter-spacing:.3px; }
+  .ai-rev-verdict.keep { color:var(--text2); background:var(--bg2); }
+  .ai-rev-verdict.remove { color:#c33; background:rgba(200,50,50,.06); }
+  .ai-rev-verdict.edit { color:#b08000; background:rgba(176,128,0,.06); }
+  .ai-rev-verdict.rescue { color:var(--blue); background:rgba(107,142,181,.08); }
+  .ai-rev-conf { font-size:10px; color:var(--text3); margin-left:auto; }
+  .ai-rev-reason { font-size:11px; color:var(--text2); margin-bottom:8px; font-style:italic; }
+  .ai-rev-text { font-size:11px; color:var(--text3); margin-bottom:4px; line-height:1.4; }
+  .ai-rev-text strong { color:var(--text2); font-weight:600; }
+  .ai-rev-removal-tag { display:inline-block; font-size:9px; font-weight:600; color:var(--text3); background:var(--bg2); padding:1px 6px; border-radius:3px; margin-left:6px; text-transform:uppercase; letter-spacing:.3px; }
+  .ai-rev-diff { background:var(--bg); padding:8px 10px; border-radius:8px; border-left:3px solid var(--accent); margin:8px 0; font-size:11px; color:var(--text2); }
+  .ai-rev-diff .ai-diff-label { font-size:9px; font-weight:600; text-transform:uppercase; color:var(--text3); letter-spacing:.3px; margin-bottom:2px; }
+  .ai-rev-diff .ai-diff-old { color:var(--text3); text-decoration:line-through; margin-bottom:4px; }
+  .ai-rev-diff .ai-diff-new { color:var(--text); }
+  .ai-rev-ktype { font-size:9px; color:var(--accent); background:var(--accent-lighter); padding:1px 6px; border-radius:3px; letter-spacing:.2px; }
+  .ai-rev-signals { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .ai-rev-signal { font-size:9px; color:var(--text3); background:var(--bg2); padding:1px 6px; border-radius:3px; letter-spacing:.2px; }
+  .ai-rev-actions { display:flex; gap:6px; margin-top:8px; }
+  .ai-rev-actions button { padding:4px 14px; font-size:11px; font-family:var(--font); border:1px solid var(--border); border-radius:6px; cursor:pointer; background:var(--bg2); color:var(--text2); transition:all .15s; }
+  .ai-rev-actions button:hover { border-color:var(--text3); color:var(--text); }
+  .ai-rev-actions button.accepted { background:var(--accent); color:var(--accent-text); border-color:var(--accent); }
+  .ai-rev-actions button.rejected { background:var(--bg2); color:var(--text3); border-color:var(--text3); text-decoration:line-through; }
+
+  /* ─── Cleaning page: version safety ─── */
+  .version-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .version-dot.safe { background:#6B9E7A; }
+  .version-dot.warn { background:var(--orange); }
+
+  /* Ingestion compact */
+  #view-ingestion .infra-wrap { padding:16px 24px 0; }
+  #view-ingestion .section-card { padding:10px 12px; }
+  #view-ingestion .upload-zone { padding:18px 14px; }
+  #view-ingestion .upload-title { font-size:12px; }
+  #view-ingestion .upload-hint { font-size:10px; margin-top:2px; }
+  #view-ingestion .file-info { margin-top:6px; }
+  #view-ingestion .ingest-toolbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:8px;
+  }
+  #view-ingestion .ingest-note {
+    color:var(--text2);
+    font-size:12px;
+    line-height:1.4;
+    margin:0 2px 0 0;
+    flex:1 1 auto;
+  }
+  #view-ingestion .ingest-note strong { color:var(--text); }
+  #view-ingestion .actions { margin-top:0; }
+  #view-ingestion .actions .btn { flex:1; padding:8px 0; }
+  #view-ingestion .ingest-actions {
+    display:flex;
+    gap:8px;
+    flex:0 0 auto;
+    justify-content:flex-end;
+  }
+  #view-ingestion .ingest-actions .btn {
+    flex:0 0 auto;
+    min-width:180px;
+    padding:8px 16px;
+    font-size:13px;
+  }
+  @media (max-width: 1100px) {
+    #view-ingestion .ingest-toolbar { flex-direction:column; align-items:stretch; }
+    #view-ingestion .ingest-actions { justify-content:stretch; }
+    #view-ingestion .ingest-actions .btn { flex:1 1 0; min-width:0; }
+  }
+  #view-ingestion .stats { padding:12px 24px; gap:10px; }
+  #view-ingestion .stat { padding:10px 8px; }
+  #view-ingestion .prog { padding:0 24px 12px; }
+  #view-ingestion .prog-inner { padding:10px 12px; }
+  #view-ingestion .jobs-list { max-height:96px; }
+  #view-ingestion .jobs-empty { padding:6px 0; }
+  #view-ingestion .log-wrap { margin:12px 24px 20px; }
+  #view-ingestion .log-body { min-height:84px; max-height:190px; }
+  #view-ingestion .file-history-list { display:flex; flex-wrap:wrap; gap:8px; }
+  #view-ingestion .file-history-empty { color:var(--text3); font-size:12px; padding:2px 0; }
+  #view-ingestion .file-history-chip {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    max-width:100%;
+    padding:7px 10px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:var(--bg2);
+    font-size:12px;
+    color:var(--text2);
+  }
+  #view-ingestion .file-history-chip .name {
+    color:var(--text);
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:320px;
+  }
+  #view-ingestion .file-history-chip .meta { color:var(--text3); white-space:nowrap; }
+  #view-ingestion .file-history-chip .mode {
+    font-size:10px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--text3);
+  }
+  #view-ingestion .file-history-chip .delete {
+    appearance:none;
+    border:none;
+    background:transparent;
+    color:var(--text3);
+    cursor:pointer;
+    font-size:15px;
+    line-height:1;
+    padding:0 0 0 2px;
+  }
+  #view-ingestion .file-history-chip .delete:hover { color:var(--danger); }
+
+  /* Log */
+  .log-wrap { flex:1; display:flex; flex-direction:column; overflow:hidden; margin:0 24px 24px; border-radius:var(--radius); background:var(--bg3); border:none; box-shadow:var(--shadow-md); }
+  .log-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--border);
+  }
+  .log-title { font-size:12px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px; }
+  .live { display:none; font-size:9px; font-weight:700; color:var(--accent); background:var(--accent-lighter); border:none; padding:1px 6px; border-radius:8px; letter-spacing:0.3px; }
+  .live.on { display:inline-block; }
+  .log-clear {
+    font-size:11px; color:var(--text3); cursor:pointer;
+    background:none; border:1px solid transparent; font-family:var(--font); font-weight:500;
+    padding:3px 8px; border-radius:6px; transition:all 0.15s;
+  }
+  .log-clear:hover { color:var(--red); border-color:var(--red); background:none; }
+  .log-body {
+    flex:1; overflow-y:auto; padding:6px 14px;
+    font-size:12px; line-height:1.7;
+  }
+  .log-body::-webkit-scrollbar { width:2px; }
+  .log-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:1px; }
+  .log-row { display:flex; gap:8px; padding:4px 0; border-bottom:1px solid rgba(0,0,0,0.03); }
+  .log-row:last-child { border-bottom:none; }
+  .log-t { color:var(--text3); white-space:nowrap; flex-shrink:0; font-size:11px; font-family:'SF Mono',monospace; }
+  .log-lv {
+    font-size:9px; font-weight:700; text-transform:uppercase;
+    white-space:nowrap; flex-shrink:0; min-width:34px;
+    padding:2px 6px; border-radius:4px; text-align:center; line-height:1.6;
+  }
+  .log-lv.info { color:var(--text3); background:var(--bg2); }
+  .log-lv.warn { color:var(--text2); background:var(--bg2); }
+  .log-lv.error { color:var(--red); background:rgba(255,69,58,0.07); }
+  .log-m { color:var(--text); word-break:break-word; font-size:12px; }
+
+  /* ─── Prompt Manager ─── */
+  .prompt-manager { margin-top:12px; }
+  .prompt-manager .field { margin-bottom:8px; }
+  .prompt-manager .field label { display:block; font-size:12px; font-weight:500; color:var(--text2); margin-bottom:4px; }
+  .prompt-manager select {
+    width:100%; background:var(--bg2); border:1px solid transparent; border-radius:8px;
+    color:var(--text); font-family:var(--font); font-size:13px; padding:8px 10px;
+    outline:none; transition:all 0.15s; -webkit-appearance:none; appearance:none;
+  }
+  .prompt-manager select:focus { border-color:var(--accent); background:var(--bg3); box-shadow:0 0 0 3px rgba(107,92,16,0.08); }
+  .prompt-manager .prompt-title-input {
+    width:100%; background:var(--bg2); border:1px solid transparent; border-radius:8px;
+    color:var(--text); font-family:var(--font); font-size:13px; font-weight:600; padding:8px 10px;
+    outline:none; transition:all 0.15s; box-sizing:border-box;
+  }
+  .prompt-manager .prompt-title-input:focus { border-color:var(--accent); background:var(--bg3); box-shadow:0 0 0 3px rgba(107,92,16,0.08); }
+  .prompt-manager .prompt-title-input::placeholder { font-weight:400; color:var(--text3); }
+  .prompt-manager textarea {
+    width:100%; background:var(--bg2); border:1px solid transparent; border-radius:8px;
+    color:var(--text); font-family:var(--font); font-size:12px; padding:8px 10px;
+    outline:none; transition:all 0.15s; resize:vertical; min-height:80px; line-height:1.5; box-sizing:border-box;
+  }
+  .prompt-manager textarea:focus { border-color:var(--accent); background:var(--bg3); box-shadow:0 0 0 3px rgba(107,92,16,0.08); }
+  .prompt-actions { display:flex; gap:6px; margin-top:6px; }
+  .prompt-actions .btn-sm {
+    font-family:var(--font); font-size:11px; font-weight:600; padding:5px 10px;
+    border:1px solid var(--border); border-radius:8px; cursor:pointer;
+    background:var(--bg); color:var(--text2); transition:all 0.15s;
+  }
+  .prompt-actions .btn-sm:hover { border-color:var(--accent); color:var(--accent); }
+  .prompt-actions .btn-sm.danger { color:var(--red); }
+  .prompt-actions .btn-sm.danger:hover { background:rgba(255,69,58,0.06); border-color:var(--red); }
+
+  /* ─── Evaluation Score ─── */
+  /* ─── Score (monochrome) ─── */
+  .score-circle {
+    width:72px; height:72px; border-radius:50%; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; border:2.5px solid var(--accent); flex-shrink:0;
+  }
+  .score-circle .score-num { font-size:22px; font-weight:700; line-height:1; color:var(--accent); }
+  .score-circle .score-max { font-size:10px; color:var(--text3); }
+  .score-grade { font-size:28px; font-weight:800; color:var(--accent); }
+  .score-bars { flex:1; display:flex; flex-direction:column; gap:5px; }
+  .score-bar-row { display:flex; align-items:center; gap:8px; font-size:11px; }
+  .score-bar-label { width:140px; color:var(--text2); font-weight:500; white-space:nowrap; }
+  .score-bar-track { flex:1; height:5px; background:var(--bg2); border-radius:3px; overflow:hidden; }
+  .score-bar-fill { height:100%; border-radius:3px; transition:width 0.4s; background:var(--accent); }
+  .score-bar-val { width:36px; text-align:right; font-weight:600; color:var(--text); font-size:11px; }
+  .score-bar-detail { font-size:10px; color:var(--text3); margin-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+  /* ─── Profile metric ─── */
+  .dp-metric { text-align:center; padding:16px 8px; }
+  .dp-metric .dp-val { font-size:26px; font-weight:700; color:var(--text); line-height:1.2; }
+  .dp-metric .dp-lbl { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+
+  /* ─── Pipeline Stepper ─── */
+  .pipeline-baseline {
+    padding: 8px 12px; margin-bottom: 6px;
+    background: var(--bg2); border-radius: 8px;
+    font-size: 12px; color: var(--text2);
+  }
+  .pipeline-baseline-stats { display: flex; gap: 16px; }
+  .pipeline-baseline-stat strong { color: var(--text); font-weight: 700; }
+
+  .pipeline-step-list { display: flex; flex-direction: column; }
+  .pipeline-step-row {
+    padding: 9px 10px; border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .pipeline-step-row:last-child { border-bottom: none; }
+  .pipeline-step-row:hover { background: rgba(0,0,0,0.015); }
+  .step-header { display: flex; align-items: center; gap: 8px; }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    background: var(--bg2); color: var(--text3); flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .pipeline-step-row.completed .step-num { background: var(--accent-strong); color: var(--accent-text); }
+  .pipeline-step-row.running .step-num { background: var(--accent-strong); color: var(--accent-text); }
+  .pipeline-step-row.skipped .step-num { opacity: 0.4; }
+  @keyframes pulse-ring { 0%{box-shadow:0 0 0 0 rgba(80,80,80,0.4)} 70%{box-shadow:0 0 0 6px rgba(80,80,80,0)} 100%{box-shadow:0 0 0 0 rgba(80,80,80,0)} }
+  .pipeline-step-row.running .step-num { animation: pulse-ring 1.2s ease infinite; }
+  .step-info { flex: 1; min-width: 0; }
+  .step-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .step-desc { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .step-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .step-stats {
+    display: flex; gap: 14px; padding-left: 30px; margin-top: 5px;
+    font-size: 10px; color: var(--text2);
+  }
+  .step-stats span { white-space: nowrap; }
+  .step-stats .green { color: var(--green); font-weight: 600; }
+
+  .btn-sm {
+    font-family: var(--font); font-size: 10px; font-weight: 600; padding: 4px 10px;
+    border-radius: 5px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text2); cursor: pointer; transition: all 0.15s;
+  }
+  .btn-sm:hover:not(:disabled) { border-color: var(--text3); color: var(--text); }
+  .btn-sm:disabled { opacity: 0.3; cursor: default; }
+  .btn-sm.download { color: var(--accent-text); }
+  .btn-sm.download:hover:not(:disabled) {
+    background: var(--accent-lighter); border-color: var(--accent-text);
+  }
+
+  @media (max-width:800px) {
+    .layout { grid-template-columns:1fr; }
+    .panel-left { border-bottom:1px solid var(--border-soft); box-shadow:none; }
+    .kb-menu { display:grid; grid-template-columns:1fr 1fr; }
+    .stats { grid-template-columns:repeat(2,1fr); }
+    .profile-stats { grid-template-columns:repeat(2,1fr); }
+    .embed-wrap { height:70vh; }
+    .kb-menu-item { max-width:100% !important; }
+    nav { border-radius:0; }
+  }
+</style>
+<script>
+  (function seedInitialKbView() {
+    try {
+      const views = ['overview', 'analysis', 'cleaning', 'quality-review', 'rag-ingestion', 'llm-evaluation'];
+      const rawHash = String(window.location.hash || '').replace(/^#/, '').trim();
+      let hashView = '';
+      if (views.includes(rawHash)) {
+        hashView = rawHash;
+      } else if (rawHash.startsWith('kb=')) {
+        const candidate = rawHash.slice(3);
+        if (views.includes(candidate)) hashView = candidate;
+      }
+      let memoryView = '';
+      try {
+        const rawMemory = localStorage.getItem('kb_ui_memory');
+        const parsed = rawMemory ? JSON.parse(rawMemory) : null;
+        if (views.includes(parsed?.activeView)) memoryView = parsed.activeView;
+      } catch (_e) {}
+      document.documentElement.setAttribute('data-kb-view', hashView || memoryView || 'overview');
+    } catch (_e) {}
+  })();
+</script>
+</head>
+<body>
+
+<!-- Animated background orbs -->
+<div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden;">
+  <div style="position:absolute;border-radius:50%;filter:blur(80px);opacity:0.2;width:400px;height:400px;top:-5%;right:10%;background:radial-gradient(circle,var(--accent-light) 0%,transparent 70%);animation:kbOrb 25s ease-in-out infinite;"></div>
+  <div style="position:absolute;border-radius:50%;filter:blur(80px);opacity:0.15;width:350px;height:350px;bottom:10%;left:-5%;background:radial-gradient(circle,#f0e0a0 0%,transparent 70%);animation:kbOrb 30s ease-in-out infinite;animation-delay:-10s;"></div>
+</div>
+<style>
+  @keyframes kbOrb { 0%,100%{transform:translate(0,0) scale(1)} 25%{transform:translate(30px,-40px) scale(1.05)} 50%{transform:translate(-20px,20px) scale(0.95)} 75%{transform:translate(15px,30px) scale(1.02)} }
+</style>
+
+<nav>
+  <a href="/" data-file-href="../../frontend/portfolio.html" style="font-size:12px;color:var(--text3);text-decoration:none;margin-right:14px;padding:5px 12px;border:1px solid var(--border-soft);border-radius:8px;transition:all 0.2s;backdrop-filter:blur(8px);" onmouseover="this.style.borderColor='var(--accent-strong)';this.style.background='var(--accent-lighter)';this.style.color='var(--accent-text)'" onmouseout="this.style.borderColor='var(--border-soft)';this.style.background='transparent';this.style.color='var(--text3)'">&larr; Portfolio</a>
+  <span class="nav-brand">Knowledge Base Pipeline</span>
+  <div class="nav-links">
+    <a href="ai-assistant.html">AI Assistant</a>
+    <a href="retrieval-config.html">Retrieval Config</a>
+    <a href="qa-builder.html">Support QA</a>
+    <a href="internal-reminder.html">Internal AI</a>
+    <a href="accuracy-test.html">Accuracy Lab</a>
+  </div>
+  <button class="nav-settings-btn" id="navSettingsBtn" onclick="toggleOllamaSettingsPanel()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    SecureView
+    <span class="ai-dot" id="aiDotNav"></span>
+  </button>
+</nav>
+
+<div class="layout">
+
+  <aside class="panel-left">
+    <div class="section-label">Knowledge Base</div>
+    <div class="kb-menu">
+      <button class="kb-menu-item" data-view="overview" onclick="switchKbView('overview')"><svg class="menu-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg>Overview</button>
+      <button class="kb-menu-item" data-view="analysis" onclick="switchKbView('analysis')"><svg class="menu-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9" width="3" height="5" rx="0.5"/><rect x="6.5" y="5" width="3" height="9" rx="0.5"/><rect x="11" y="2" width="3" height="12" rx="0.5"/></svg>Data Analysis</button>
+<button class="kb-menu-item" data-view="quality-review" onclick="switchKbView('quality-review')"><svg class="menu-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-6"/><circle cx="8" cy="8" r="6.5"/></svg>Quality Review</button>
+      <button class="kb-menu-item" data-view="rag-ingestion" onclick="switchKbView('rag-ingestion')"><svg class="menu-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="8" cy="4" rx="6" ry="2.5"/><path d="M2 4v8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V4"/><path d="M2 8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5"/></svg>RAG & Ingestion</button>
+      <button class="kb-menu-item" data-view="llm-evaluation" onclick="switchKbView('llm-evaluation')"><svg class="menu-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="8,1.5 9.8,5.2 14,5.8 11,8.7 11.6,12.8 8,11 4.4,12.8 5,8.7 2,5.8 6.2,5.2"/></svg>LLM Evaluation</button>
+    </div>
+
+  </aside>
+
+
+  <main class="panel-right">
+    <button class="kb-toggle" id="kbToggle" onclick="toggleKbSidebar()" aria-label="Collapse sidebar">&#8249;</button>
+    <section class="kb-view" id="view-overview">
+      <div class="overview-wrap">
+        <div class="overview-stack">
+
+          <div class="page-summary">
+            <div class="hero-left">
+              <div class="page-summary-label"><span class="page-summary-dot"></span>Knowledge Base Pipeline</div>
+              <h1>Turn messy support data into retrieval-grade knowledge assets.</h1>
+              <p>This workspace is built around one job: converting raw operational text into cleaner, more reliable AI inputs. It combines profiling, cleaning, QA review, and ingestion so the RAG layer starts from disciplined data instead of chaos.</p>
+              <div class="page-summary-strip">
+                <div class="page-summary-chip"><span class="page-summary-dot"></span>Profile ticket quality</div>
+                <div class="page-summary-chip"><span class="page-summary-dot"></span>Clean for retrieval</div>
+                <div class="page-summary-chip"><span class="page-summary-dot"></span>Review before ingest</div>
+              </div>
+              <div class="page-proof">
+                <div class="page-proof-card">
+                  <strong>30+</strong>
+                  <span>Heuristic cleanup rules for headers, signatures, quotes, and noise.</span>
+                </div>
+                <div class="page-proof-card">
+                  <strong>QA-first</strong>
+                  <span>Review surfaces designed to catch low-quality data before embedding.</span>
+                </div>
+                <div class="page-proof-card">
+                  <strong>RAG-ready</strong>
+                  <span>Built to improve downstream retrieval precision and answer quality.</span>
+                </div>
+              </div>
+            </div>
+            <div class="hero-right">
+              <svg class="pipeline-flow-svg" viewBox="0 0 400 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Column labels -->
+                <text x="60" y="14" font-family="DM Sans,sans-serif" font-size="9" font-weight="700" fill="#bbb" letter-spacing="1.2" text-anchor="middle">SOURCES</text>
+                <text x="340" y="14" font-family="DM Sans,sans-serif" font-size="9" font-weight="700" fill="#bbb" letter-spacing="1.2" text-anchor="middle">OUTPUTS</text>
+
+                <!-- Source pills (left) -->
+                <rect x="4" y="28" width="112" height="30" rx="15" fill="#fff" stroke="#E8E0D4" stroke-width="1"/>
+                <text x="60" y="48" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6B5E4D" text-anchor="middle">Raw Emails</text>
+
+                <rect x="4" y="66" width="112" height="30" rx="15" fill="#fff" stroke="#E8E0D4" stroke-width="1"/>
+                <text x="60" y="86" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6B5E4D" text-anchor="middle">Support Tickets</text>
+
+                <rect x="4" y="104" width="112" height="30" rx="15" fill="#fff" stroke="#E8E0D4" stroke-width="1"/>
+                <text x="60" y="124" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6B5E4D" text-anchor="middle">Chat Logs</text>
+
+                <rect x="4" y="142" width="112" height="30" rx="15" fill="#fff" stroke="#E8E0D4" stroke-width="1"/>
+                <text x="60" y="162" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6B5E4D" text-anchor="middle">Documents</text>
+
+                <!-- Thin lines left to center -->
+                <line x1="116" y1="43" x2="168" y2="100" stroke="#E2DAC9" stroke-width="1"/>
+                <line x1="116" y1="81" x2="168" y2="108" stroke="#E2DAC9" stroke-width="1"/>
+                <line x1="116" y1="119" x2="168" y2="116" stroke="#E2DAC9" stroke-width="1"/>
+                <line x1="116" y1="157" x2="168" y2="126" stroke="#E2DAC9" stroke-width="1"/>
+
+                <!-- Two subtle animated dots -->
+                <circle r="2" fill="#e8d584" opacity="0.8"><animateMotion dur="3s" repeatCount="indefinite" path="M116 43 L168 100"/></circle>
+                <circle r="2" fill="#e8d584" opacity="0.8"><animateMotion dur="3.5s" repeatCount="indefinite" path="M116 119 L168 116"/></circle>
+
+                <!-- Center hub -->
+                <circle cx="200" cy="114" r="32" fill="#FCF4CB" stroke="#e8d584" stroke-width="1.5"/>
+                <text x="200" y="110" font-family="DM Sans,sans-serif" font-size="8" font-weight="700" fill="#6b5c10" text-anchor="middle" letter-spacing="0.5">DATA</text>
+                <text x="200" y="122" font-family="DM Sans,sans-serif" font-size="8" font-weight="700" fill="#6b5c10" text-anchor="middle" letter-spacing="0.5">PIPELINE</text>
+
+                <!-- Steps label -->
+                <text x="200" y="164" font-family="DM Sans,sans-serif" font-size="8" font-weight="500" fill="#bbb" text-anchor="middle">Clean · Profile · QA · Embed</text>
+
+                <!-- Thin lines center to right -->
+                <line x1="232" y1="100" x2="284" y2="43" stroke="#e8d584" stroke-width="1" opacity="0.5"/>
+                <line x1="232" y1="108" x2="284" y2="81" stroke="#e8d584" stroke-width="1" opacity="0.5"/>
+                <line x1="232" y1="120" x2="284" y2="119" stroke="#e8d584" stroke-width="1" opacity="0.5"/>
+                <line x1="232" y1="130" x2="284" y2="157" stroke="#e8d584" stroke-width="1" opacity="0.5"/>
+
+                <!-- One subtle animated dot right -->
+                <circle r="2" fill="#e8d584" opacity="0.8"><animateMotion dur="2.8s" repeatCount="indefinite" path="M232 108 L284 81"/></circle>
+
+                <!-- Output pills (right) -->
+                <rect x="284" y="28" width="112" height="30" rx="15" fill="#FCF4CB" stroke="#e8d584" stroke-width="1"/>
+                <text x="340" y="48" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6b5c10" text-anchor="middle">Vector Store</text>
+
+                <rect x="284" y="66" width="112" height="30" rx="15" fill="#FCF4CB" stroke="#e8d584" stroke-width="1"/>
+                <text x="340" y="86" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6b5c10" text-anchor="middle">RAG Index</text>
+
+                <rect x="284" y="104" width="112" height="30" rx="15" fill="#FCF4CB" stroke="#e8d584" stroke-width="1"/>
+                <text x="340" y="124" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6b5c10" text-anchor="middle">Clean Data</text>
+
+                <rect x="284" y="142" width="112" height="30" rx="15" fill="#FCF4CB" stroke="#e8d584" stroke-width="1"/>
+                <text x="340" y="162" font-family="DM Sans,sans-serif" font-size="11" font-weight="500" fill="#6b5c10" text-anchor="middle">AI-Ready</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- ═══ Pipeline Tracker ═══ -->
+          <div class="section-card" style="background:linear-gradient(135deg, #fff 0%, var(--accent-lighter) 100%) !important;">
+            <div class="section-label" style="display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M9 4l4 4-4 4"/></svg>Pipeline</div>
+            <div class="pipe-tracker">
+              <div class="pipe-node"><div class="pipe-dot" id="ovDotUpload"></div><div class="pipe-name" id="ovNameUpload">Upload</div><div class="pipe-detail" id="ovDetUpload">—</div></div>
+              <div class="pipe-line" id="ovLineUpload"></div>
+              <div class="pipe-node"><div class="pipe-dot" id="ovDotProfile"></div><div class="pipe-name" id="ovNameProfile">Analysis</div><div class="pipe-detail" id="ovDetProfile">—</div></div>
+              <div class="pipe-line" id="ovLineProfile"></div>
+              <div class="pipe-node"><div class="pipe-dot" id="ovDotQa"></div><div class="pipe-name" id="ovNameQa">QA Clean</div><div class="pipe-detail" id="ovDetQa">—</div></div>
+              <div class="pipe-line" id="ovLineQa"></div>
+              <div class="pipe-node"><div class="pipe-dot" id="ovDotRag"></div><div class="pipe-name" id="ovNameRag">RAG Format</div><div class="pipe-detail" id="ovDetRag">—</div></div>
+              <div class="pipe-line" id="ovLineRag"></div>
+              <div class="pipe-node"><div class="pipe-dot" id="ovDotIngest"></div><div class="pipe-name" id="ovNameIngest">Ingestion</div><div class="pipe-detail" id="ovDetIngest">—</div></div>
+            </div>
+          </div>
+
+          <!-- ═══ Dataset Metrics ═══ -->
+          <div class="section-card">
+            <div class="section-label" id="ovDatasetLabel" style="display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/></svg>Dataset</div>
+            <div class="ov-metrics" id="ovMetricsGrid">
+              <div class="ov-metric"><div class="ov-val" id="ovTotalEntries">—</div><div class="ov-lbl">Documents</div></div>
+              <div class="ov-metric"><div class="ov-val" id="ovRagScore">—</div><div class="ov-lbl">RAG Score</div></div>
+              <div class="ov-metric"><div class="ov-val" id="ovHighConf">—</div><div class="ov-lbl">High Confidence</div></div>
+              <div class="ov-metric"><div class="ov-val" id="ovTechSignals">—</div><div class="ov-lbl" id="ovTechSignalsLbl">Components</div></div>
+              <div class="ov-metric"><div class="ov-val" id="ovRemoved">—</div><div class="ov-lbl">Removed</div></div>
+              <div class="ov-metric"><div class="ov-val" id="ovRootCauses">—</div><div class="ov-lbl">Root Causes</div></div>
+              <div class="ov-metric"><div class="ov-val" id="ovIssueTypes">—</div><div class="ov-lbl">Categories</div></div>
+              <div class="ov-metric"><div class="ov-val sm" id="ovAvgSolLen">—</div><div class="ov-lbl" id="ovAvgSolLenLbl">Avg Embed Len</div></div>
+            </div>
+          </div>
+
+          <!-- ═══ Confidence + Issue Types ═══ -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div class="section-card">
+              <div class="section-label" style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg>Confidence</div>
+              <div style="padding:6px 0;">
+                <div class="conf-bar">
+                  <div class="seg-high" id="ovConfHigh" style="width:33%"></div>
+                  <div class="seg-medium" id="ovConfMed" style="width:34%"></div>
+                  <div class="seg-low" id="ovConfLow" style="width:33%"></div>
+                </div>
+                <div class="conf-legend">
+                  <span><span class="dot" style="background:var(--accent);"></span> High <b id="ovConfHighN">—</b></span>
+                  <span><span class="dot" style="background:var(--text3);"></span> Medium <b id="ovConfMedN">—</b></span>
+                  <span><span class="dot" style="background:var(--border);"></span> Low <b id="ovConfLowN">—</b></span>
+                </div>
+              </div>
+            </div>
+            <div class="section-card">
+              <div class="section-label" style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10.5v.5"/></svg>Issue Types</div>
+              <div class="ov-bar-chart" id="ovIssueChart" style="padding:6px 0;"><div style="font-size:11px; color:var(--text3);">No data</div></div>
+            </div>
+          </div>
+
+          <!-- ═══ Vector Health ═══ -->
+          <div class="section-card">
+            <div class="section-label" style="display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="4" rx="6" ry="2.5"/><path d="M2 4v8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V4"/><path d="M2 8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5"/></svg>Vectors</div>
+            <div class="ov-metrics" style="grid-template-columns:repeat(4,1fr);">
+              <div class="ov-metric"><div class="ov-val" id="ovIndexedTickets">0</div><div class="ov-lbl">Indexed</div></div>
+              <div class="ov-metric"><div class="ov-val" id="ovEmbeddedVectors">0</div><div class="ov-lbl">Embedded</div></div>
+              <div class="ov-metric"><div class="ov-val sm" id="ovEmbedModel">nomic-embed-text</div><div class="ov-lbl">Model</div></div>
+              <div class="ov-metric"><div class="ov-val sm" id="ovLastIngest">—</div><div class="ov-lbl">Last Ingest</div></div>
+            </div>
+          </div>
+
+          <!-- ═══ Warnings + Next ═══ -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div class="section-card">
+              <div class="section-label" style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L1.5 13.5h13L8 2z"/><path d="M8 7v3M8 11.5v.5"/></svg>Warnings</div>
+              <div class="warn-list" id="ovWarnings"><div class="warn-item ok">No warnings.</div></div>
+            </div>
+            <div class="section-card">
+              <div class="section-label" style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>Next Action</div>
+              <div class="next-action" id="ovNextAction">Run the pipeline to populate this dashboard.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <section class="kb-view" id="view-analysis">
+      <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+
+        <!-- ═══ Page Intro ═══ -->
+        <div class="section-card" style="border-left:3px solid var(--accent-strong);">
+          <div class="section-label" style="border-bottom:none; margin-bottom:8px; padding-bottom:0;">Data Analysis</div>
+          <p style="font-size:13px; color:var(--text2); line-height:1.7; margin:0;">
+            Upload a scraped JSON dataset to analyze its structure and quality. The profiler scans for ticket counts, message volumes, noise patterns, and top issue categories — giving you a quality score before cleaning.
+          </p>
+        </div>
+
+        <!-- ═══ Upload + Run ═══ -->
+        <div class="section-card">
+          <div class="section-label">Upload Dataset</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="upload-zone" id="profileUploadZone" style="flex:1; padding:10px 14px; border-radius:8px;">
+              <input type="file" id="profileFileInput" accept=".json,application/json">
+              <div class="upload-title" id="profileUploadLabel">Drop JSON here or <strong>browse</strong></div>
+            </div>
+            <button class="btn btn-go" style="flex:0 0 auto; padding:9px 24px;" id="btnServerProfile" onclick="runServerProfile()" disabled>Run Analysis</button>
+            <button class="btn btn-alt" style="flex:0 0 auto; padding:8px 16px; display:none;" id="btnDownloadProfile" onclick="downloadProfileJson()">Export</button>
+          </div>
+          <div class="file-info" id="profileFileInfo">
+            <span class="file-name" id="profileFileName"></span>
+            <span class="file-size" id="profileFileSize"></span>
+            <span class="file-rm" onclick="clearProfileFile()">&times;</span>
+          </div>
+
+          <!-- Collapsible Prompt Editor -->
+          <div style="margin-top:10px;">
+            <button onclick="document.getElementById('profilePromptPanel').style.display=document.getElementById('profilePromptPanel').style.display==='none'?'block':'none'; this.querySelector('.chevron').classList.toggle('open')" style="background:none; border:none; cursor:pointer; font-size:11px; font-weight:600; color:var(--text3); display:flex; align-items:center; gap:4px; padding:2px 0; font-family:var(--font);">
+              <svg class="chevron" width="10" height="10" viewBox="0 0 10 10" style="transition:transform 0.15s;"><path d="M3 2L7 5L3 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Advanced Prompt Settings
+            </button>
+            <div id="profilePromptPanel" style="display:none; margin-top:8px;">
+              <div class="prompt-manager" style="margin-top:0;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                  <select id="profilingPromptSelect" onchange="pmOnSelect('profiling')" style="display:none;"></select>
+                  <div class="ai-dropdown" id="profilingPromptWrap" style="position:relative; flex:1;">
+                    <button class="ai-dropdown-btn" onclick="this.parentElement.classList.toggle('open')" id="profilingPromptBtn" style="width:100%; justify-content:space-between;">
+                      <span>Select prompt...</span>
+                      <svg width="10" height="10" viewBox="0 0 10 10" style="opacity:0.4; flex-shrink:0;"><path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div class="ai-dropdown-menu" id="profilingPromptMenu"></div>
+                  </div>
+                  <input type="text" class="prompt-title-input" id="profilingPromptTitle" placeholder="Prompt name..." style="flex:1;">
+                </div>
+                <textarea id="profilingPromptTextarea" rows="4" placeholder="Enter a profiling prompt..." style="margin-bottom:8px;"></textarea>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn-sm" onclick="pmSave('profiling')">Save</button>
+                  <button class="btn-sm danger" id="profilingBtnDelete" onclick="pmDelete('profiling')" style="display:none;">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ What Gets Analyzed (always visible) ═══ -->
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+          <div class="section-card" style="text-align:center; padding:20px 16px;">
+            <div style="font-size:22px; margin-bottom:8px;">📊</div>
+            <div style="font-size:12px; font-weight:600; margin-bottom:4px;">Dataset Scale</div>
+            <div style="font-size:11px; color:var(--text3); line-height:1.5;">Total tickets, messages, and character counts across the entire export.</div>
+          </div>
+          <div class="section-card" style="text-align:center; padding:20px 16px;">
+            <div style="font-size:22px; margin-bottom:8px;">🔍</div>
+            <div style="font-size:12px; font-weight:600; margin-bottom:4px;">Noise Detection</div>
+            <div style="font-size:11px; color:var(--text3); line-height:1.5;">Identifies headers, signatures, quoted chains, and encoding artifacts.</div>
+          </div>
+          <div class="section-card" style="text-align:center; padding:20px 16px;">
+            <div style="font-size:22px; margin-bottom:8px;">🏷️</div>
+            <div style="font-size:12px; font-weight:600; margin-bottom:4px;">Issue Categories</div>
+            <div style="font-size:11px; color:var(--text3); line-height:1.5;">Groups tickets by semantic topic to show the most common issues.</div>
+          </div>
+        </div>
+
+        <!-- ═══ Results (shown after analysis runs) ═══ -->
+        <div id="profileResultsCard" style="display:none;">
+
+          <!-- Empty State -->
+          <div class="profile-empty" id="profileEmpty">No profile data yet. Upload a JSON file and click "Run Profiling".</div>
+
+          <!-- Score + Numbers (one row) -->
+          <div class="section-card" id="dpScoreSection" style="display:none; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:0;">
+              <!-- Left: circle + grade + bars -->
+              <div style="flex:1; display:flex; align-items:center; gap:16px; padding-right:20px;">
+                <div class="score-circle" id="scoreCircle">
+                  <div class="score-num" id="scoreNum">0</div>
+                  <div class="score-max">/100</div>
+                </div>
+                <div class="score-grade" id="scoreGrade">—</div>
+                <div class="score-bars" id="scoreBars" style="flex:1;"></div>
+              </div>
+              <!-- Right: key numbers -->
+              <div id="dpOverviewGrid" style="display:none; border-left:1px solid var(--border); align-items:center; gap:0;">
+                <div class="dp-metric" style="padding:12px 20px;"><div class="dp-val" id="dpTotalTickets">0</div><div class="dp-lbl">Tickets</div></div>
+                <div style="width:1px; height:32px; background:var(--border);"></div>
+                <div class="dp-metric" style="padding:12px 20px;"><div class="dp-val" id="dpTotalMessages">0</div><div class="dp-lbl">Messages</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Issues -->
+          <div class="section-card" id="dpSemanticSection" style="display:none;">
+            <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:10px;">
+              <div class="section-label" style="margin-bottom:0;">Top Issues</div>
+              <span style="font-size:11px; color:var(--text3);" id="dpThemeSummary"></span>
+            </div>
+            <div class="profile-table">
+              <table>
+                <thead><tr><th>Issue</th><th style="text-align:right;">Count</th><th style="text-align:right;">%</th></tr></thead>
+                <tbody id="dpThemeRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <section class="kb-view" id="view-cleaning">
+      <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Action Bar: Import File + Pipeline Controls -->
+        <div class="section-card">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="upload-zone" id="cleanImportZone" style="flex:1; padding:12px 16px; border-radius:8px;">
+              <input type="file" id="cleanImportInput" accept=".json,application/json">
+              <div class="upload-title" id="cleanImportLabel">Drop export JSON here or <strong>browse</strong></div>
+            </div>
+            <button class="btn btn-go" style="flex:0 0 auto; padding:9px 24px;" id="btnRunPipeline" onclick="runPipeline()" disabled>Run All Steps</button>
+          </div>
+          <div class="file-info" id="cleanImportFileInfo">
+            <span class="file-name" id="cleanImportFileName"></span>
+            <span class="file-size" id="cleanImportFileSize"></span>
+            <span class="file-rm" onclick="clearCleanImport()">&times;</span>
+          </div>
+          <div style="margin-top:6px; font-size:11px; color:var(--text3);" id="cleaningStatus"></div>
+        </div>
+
+        <!-- Pipeline Steps Panel -->
+        <div class="section-card" id="pipelinePanel" style="display:none;">
+          <div class="section-label">Cleaning Pipeline</div>
+          <div class="pipeline-baseline" id="pipelineBaseline" style="display:none;">
+            <div class="pipeline-baseline-stats">
+              <span class="pipeline-baseline-stat"><strong id="plBaseTickets">&mdash;</strong> tickets</span>
+              <span class="pipeline-baseline-stat"><strong id="plBaseMessages">&mdash;</strong> messages</span>
+              <span class="pipeline-baseline-stat"><strong id="plBaseChars">&mdash;</strong> chars</span>
+            </div>
+          </div>
+          <div class="pipeline-step-list" id="pipelineStepList">
+            <!-- Steps rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Step Diff Panel -->
+        <div class="section-card" id="stepDiffPanel" style="display:none;">
+          <div class="section-label" style="display:flex; align-items:center;">
+            Step <span id="diffStepNum"></span>&nbsp;Changes
+            <span id="diffCount" style="font-weight:400; color:var(--text3); text-transform:none; letter-spacing:0; font-size:11px; margin-left:6px;"></span>
+            <span style="flex:1;"></span>
+            <span class="file-rm" onclick="closeStepDiff()" style="cursor:pointer; font-size:16px;">&times;</span>
+          </div>
+          <div id="diffContent" style="overflow-y:auto; max-height:600px;"></div>
+        </div>
+
+        <!-- Panel 1: Profile Summary -->
+        <div class="section-card" id="cleanProfilePanel">
+          <div class="section-label">Profile Summary</div>
+          <div id="cleanProfileContent">
+            <div class="profile-stats" style="grid-template-columns:repeat(2,1fr);">
+              <div class="stat"><div class="stat-val" id="cpTotalTickets">&mdash;</div><div class="stat-lbl">Tickets</div></div>
+              <div class="stat"><div class="stat-val" id="cpTotalMessages">&mdash;</div><div class="stat-lbl">Messages</div></div>
+            </div>
+            <div style="margin-top:8px; font-size:11px; color:var(--text3);" id="cpCleaningFlag"></div>
+            <div id="cpCleaningStats" style="display:none; margin-top:12px; border-top:1px solid var(--border); padding-top:12px;">
+              <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text3); margin-bottom:8px;">Cleaning Results</div>
+              <div class="profile-stats" style="grid-template-columns:repeat(3,1fr);">
+                <div class="stat"><div class="stat-val" id="cpChangedMsgs">&mdash;</div><div class="stat-lbl">Changed</div></div>
+                <div class="stat"><div class="stat-val" id="cpUnchangedMsgs">&mdash;</div><div class="stat-lbl">Unchanged</div></div>
+                <div class="stat"><div class="stat-val orange" id="cpReductionPct">&mdash;</div><div class="stat-lbl">Reduction</div></div>
+              </div>
+              <div class="profile-stats" style="grid-template-columns:repeat(2,1fr); margin-top:10px;">
+                <div class="stat">
+                  <div class="stat-val"><span id="cpQuotedBefore">&mdash;</span> <span style="color:var(--text3);">&rarr;</span> <span style="color:var(--green);" id="cpQuotedAfter">&mdash;</span></div>
+                  <div class="stat-lbl">Quoted Reply %</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-val"><span id="cpEncodingBefore">&mdash;</span> <span style="color:var(--text3);">&rarr;</span> <span style="color:var(--green);" id="cpEncodingAfter">&mdash;</span></div>
+                  <div class="stat-lbl">Encoding Artifacts %</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2: Active Cleaning Rules (hidden) -->
+        <div id="cleanRulesPanel" style="display:none;">
+          <div class="rule-grid" id="ruleGrid"></div>
+          <span id="rulesActiveCount"></span>
+        </div>
+
+        <!-- Cleaning Prompt Manager -->
+        <div class="section-card">
+          <div class="prompt-manager" style="margin-top:0;">
+            <div class="field">
+              <label>Cleaning Prompt</label>
+              <select id="cleaningPromptSelect" onchange="pmOnSelect('cleaning')"></select>
+            </div>
+            <div class="field">
+              <input type="text" class="prompt-title-input" id="cleaningPromptTitle" placeholder="Prompt name...">
+            </div>
+            <div class="field">
+              <textarea id="cleaningPromptTextarea" rows="4" placeholder="Enter a cleaning prompt..."></textarea>
+            </div>
+            <div class="prompt-actions">
+              <button class="btn-sm" onclick="pmSave('cleaning')">Save</button>
+              <button class="btn-sm danger" id="cleaningBtnDelete" onclick="pmDelete('cleaning')" style="display:none;">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 3: Cleaning Preview (3-column) -->
+        <div class="section-card" id="cleanPreviewPanel" style="display:none;">
+          <div class="section-label">Cleaning Preview <span style="font-weight:400; color:var(--text3); text-transform:none; letter-spacing:0; font-size:11px;" id="previewSampleCount"></span></div>
+          <div style="overflow-x:auto; max-height:500px; overflow-y:auto;">
+            <table class="preview-table" id="previewTable">
+              <thead>
+                <tr>
+                  <th style="width:32px;">#</th>
+                  <th style="width:60px;">Ticket</th>
+                  <th>Original</th>
+                  <th>Cleaned</th>
+                  <th style="width:180px;">Rules Applied</th>
+                </tr>
+              </thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel 4: Aggregate Impact (hidden, merged into Profile Summary) -->
+        <div id="cleanImpactPanel" style="display:none;">
+          <span id="impOrigChars"></span>
+          <span id="impCleanChars"></span>
+          <span id="impReduction"></span>
+          <span id="impTotalMsgs"></span>
+          <span id="impChangedMsgs"></span>
+          <span id="impUnchangedMsgs"></span>
+        </div>
+
+
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- QUALITY REVIEW — merged QA Clean + AI Review              -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="kb-view" id="view-quality-review">
+      <div class="merged-sub-tabs" style="padding:24px 24px 0;">
+        <button class="merged-sub-tab active" data-sub="qa" onclick="switchMergedSub(this,'quality-review')">QA Clean</button>
+        <button class="merged-sub-tab" data-sub="ai" onclick="switchMergedSub(this,'quality-review')">AI Diagnostics</button>
+      </div>
+      <div class="merged-sub-panel active" data-sub-panel="qa">
+    <!-- QA CLEAN content -->
+    <div class="kb-sub-view" id="view-qa-clean">
+      <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Action Bar: Upload + Run -->
+        <div class="section-card">
+          <div class="section-label">QA Clean</div>
+          <div style="font-size:12px; color:var(--text3); margin-bottom:10px;">
+            Upload ticket data and restructure into RAG-ready format:
+            <code style="font-size:11px; background:var(--bg2); padding:2px 6px; border-radius:4px;">ticket_id, issue_type, problem, solution, technical_signals, created_at</code>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="upload-zone" id="qaImportZone" style="flex:1; padding:8px 14px; border-radius:8px;">
+              <input type="file" id="qaImportInput" accept=".json,application/json">
+              <div class="upload-title" id="qaImportLabel">Drop JSON here or <strong>browse</strong></div>
+            </div>
+            <button class="btn btn-go" style="flex:0 0 auto; padding:8px 20px; font-size:12px;" id="btnRunQa" onclick="runQaCleanPipeline()">Run QA Clean</button>
+          </div>
+          <div class="file-info" id="qaImportFileInfo">
+            <span class="file-name" id="qaImportFileName"></span>
+            <span class="file-size" id="qaImportFileSize"></span>
+            <span class="file-rm" onclick="clearQaImport()">&times;</span>
+          </div>
+          <div style="margin-top:4px; font-size:11px; color:var(--text3);" id="qaStatus"></div>
+          <!-- Hidden: kept for JS compat -->
+          <button id="btnRunQaPipeline" style="display:none;" onclick="runQaFromPipeline()"></button>
+        </div>
+
+        <!-- Pipeline Progress (hidden until running) -->
+        <!-- Hidden stubs for JS compat (export first messages removed from UI) -->
+        <div id="fcrCard" style="display:none;"><span id="fcrStatusText"></span><span id="fcrProgressWrap"></span><span id="fcrFill"></span><span id="fcrProgressLabel"></span></div>
+
+        <div class="section-card" id="qaPipelineProgress" style="display:none;">
+          <div class="section-label">Pipeline Processing</div>
+          <div class="qa-progress-track"><div class="qa-progress-fill" id="qaProgressFill"></div></div>
+          <div class="qa-progress-meta">
+            <span id="qaProgressStage">Initializing...</span>
+            <span id="qaProgressPct">0%</span>
+          </div>
+          <div class="qa-log" id="qaPipelineLog"></div>
+        </div>
+
+        <!-- RAG Quality Score (hidden until complete) -->
+        <div class="section-card" id="qaScorePanel" style="display:none;">
+          <div class="section-label">RAG Quality Score</div>
+          <div class="score-card">
+            <div class="score-circle" id="qaScoreCircle">
+              <span class="score-num" id="qaScoreNum">--</span>
+              <span class="score-max">/ 100</span>
+            </div>
+            <div class="score-bars" id="qaScoreBars"></div>
+          </div>
+        </div>
+
+        <!-- Dataset Statistics (hidden until complete) -->
+        <div class="section-card" id="qaStatsPanel" style="display:none;">
+          <div class="section-label">Dataset Statistics</div>
+          <div class="qa-stats-grid" id="qaStatsGrid"></div>
+        </div>
+
+        <!-- Tabbed Results: Issues / Log / Browse -->
+        <div class="section-card" id="qaResultsTabs" style="display:none;">
+          <div class="qa-tabs">
+            <button class="qa-tab active" data-qatab="qaIssuesTab">Issues Fixed</button>
+            <button class="qa-tab" data-qatab="qaLogTab">Processing Log</button>
+            <button class="qa-tab" data-qatab="qaBrowseTab">Browse Entries</button>
+          </div>
+
+          <div class="qa-tab-content active" id="qaIssuesTab">
+            <table class="qa-issues-table">
+              <thead><tr><th>Category</th><th>Count</th><th>Action</th></tr></thead>
+              <tbody id="qaIssuesBody"></tbody>
+            </table>
+          </div>
+
+          <div class="qa-tab-content" id="qaLogTab">
+            <div class="qa-log" id="qaResultsLog" style="max-height:400px;"></div>
+          </div>
+
+          <div class="qa-tab-content" id="qaBrowseTab">
+            <input type="text" class="qa-search-box" id="qaSearchBox" placeholder="Search by ticket ID, problem, or solution...">
+            <div class="qa-entry-browser" id="qaEntryBrowser"></div>
+          </div>
+        </div>
+
+        <!-- Export Actions (hidden until complete) -->
+        <div class="section-card" id="qaExportPanel" style="display:none;">
+          <div class="section-label">Export</div>
+          <div class="actions">
+            <button class="btn btn-alt" id="qaDownloadClean" onclick="downloadQaCleaned()">Download Cleaned Dataset</button>
+            <button class="btn btn-alt" id="qaDownloadReport" onclick="downloadQaReport()">Download QA Report</button>
+            <button class="btn btn-alt" id="btnSendToAiReview" onclick="switchKbView('ai-review')" style="margin-left:auto;">Send to AI Review</button>
+            <button class="btn btn-alt" onclick="quickStartScoring('qa')">Run Filter</button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /qa sub-panel -->
+      </div><!-- /merged-sub-panel qa -->
+
+      <div class="merged-sub-panel" data-sub-panel="ai">
+    <!-- AI REVIEW content -->
+    <div class="kb-sub-view" id="view-ai-review">
+      <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+
+        <!-- ═══ Source Input ═══ -->
+        <div class="section-card" style="padding:0; overflow:hidden;">
+          <div style="padding:10px 16px; border-bottom:1px solid var(--border-soft);">
+            <span style="font-size:11px; font-weight:600; color:var(--text2); letter-spacing:0.3px;">Data Source</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:10px 16px;">
+            <button class="btn btn-go" style="flex:0 0 auto; padding:7px 16px; font-size:11px; border-radius:8px;" id="btnAiFromQa" onclick="aiReviewUsePreviousStepOutput()">Use QA Output</button>
+            <span style="font-size:10px; color:var(--text3);">or</span>
+            <div class="upload-zone" id="aiImportZone" style="flex:1;">
+              <input type="file" id="aiImportInput" accept=".json" onchange="aiReviewFileUpload(event)">
+              <div class="upload-title">Drop JSON or <strong>browse</strong></div>
+            </div>
+          </div>
+          <div style="padding:0 16px 8px; font-size:11px; color:var(--text3);" id="aiSourceStatus"></div>
+        </div>
+
+        <!-- ═══ Pipeline Steps (collapsible) ═══ -->
+        <div class="section-card">
+          <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'; this.querySelector('.chevron').classList.toggle('open')" style="background:none; border:none; cursor:pointer; font-size:11px; font-weight:600; color:var(--text3); display:flex; align-items:center; gap:4px; padding:0; font-family:var(--font); text-transform:uppercase; letter-spacing:0.5px;">
+            <svg class="chevron" width="10" height="10" viewBox="0 0 10 10" style="transition:transform 0.15s;"><path d="M3 2L7 5L3 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Pipeline Steps
+          </button>
+          <div id="aiPipelineSteps" style="display:none; margin-top:10px;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+              <span class="ai-step-chip" data-step="distill" style="padding:3px 10px; border:1px solid var(--border); border-radius:999px; font-size:10px; color:var(--text2); background:var(--bg);">1. Distill</span>
+              <span style="font-size:10px; color:var(--text3);">→</span>
+              <span class="ai-step-chip" data-step="scoring" style="padding:3px 10px; border:1px solid var(--border); border-radius:999px; font-size:10px; color:var(--text2); background:var(--bg);">2. Filter</span>
+              <span style="font-size:10px; color:var(--text3);">→</span>
+              <span class="ai-step-chip" data-step="normalize" style="padding:3px 10px; border:1px solid var(--border); border-radius:999px; font-size:10px; color:var(--text2); background:var(--bg);">3. Normalize</span>
+              <span style="font-size:10px; color:var(--text3);">→</span>
+              <span class="ai-step-chip" data-step="generalize" style="padding:3px 10px; border:1px solid var(--border); border-radius:999px; font-size:10px; color:var(--text2); background:var(--bg);">4. Generalize</span>
+              <span style="font-size:10px; color:var(--text3);">→</span>
+              <span class="ai-step-chip" data-step="extraction" style="padding:3px 10px; border:1px solid var(--border); border-radius:999px; font-size:10px; color:var(--text2); background:var(--bg);">5. Extraction</span>
+              <span style="font-size:10px; color:var(--text3);">→</span>
+              <span class="ai-step-chip" data-step="validation" style="padding:3px 10px; border:1px solid var(--border); border-radius:999px; font-size:10px; color:var(--text2); background:var(--bg);">6. Validation</span>
+              <span style="width:1px; height:12px; background:var(--border); margin:0 2px;"></span>
+              <span class="ai-step-chip" data-step="diagnostics" style="padding:3px 10px; border:1px solid var(--accent-strong); border-radius:999px; font-size:10px; color:var(--accent-text); background:var(--accent-light);">Diagnostics</span>
+            </div>
+            <label class="ai-check" id="aiAutoPipelineWrap" style="font-size:11px; color:var(--text2); display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" id="aiAutoPipeline" style="accent-color:var(--accent-text);" onchange="setAiAutoPipelineSetting(this.checked)">
+              Auto-run full pipeline to Validation
+            </label>
+          </div>
+        </div>
+
+        <!-- ═══ Controls ═══ -->
+        <div class="section-card" style="padding:0; overflow:hidden;">
+          <!-- Row 1: Mode + Action -->
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border-soft);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="ai-dropdown" id="aiReviewModeWrap" style="flex:0 0 auto; position:relative;">
+                <button class="ai-dropdown-btn" onclick="this.parentElement.classList.toggle('open')" id="aiReviewModeBtn" style="padding:7px 14px; font-size:12px; font-weight:600; border-radius:8px;">
+                  AI Diagnostics <svg width="9" height="9" viewBox="0 0 10 10" style="margin-left:6px;opacity:0.35;"><path d="M2 3.5L5 6.5L8 3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="ai-dropdown-menu">
+                  <div class="ai-dropdown-item active" data-value="diagnostics" onclick="selectAiMode(this)">AI Diagnostics</div>
+                  <div class="ai-dropdown-item" data-value="distill" onclick="selectAiMode(this)">AI Distill</div>
+                  <div class="ai-dropdown-item" data-value="scoring" onclick="selectAiMode(this)">AI Filter</div>
+                  <div class="ai-dropdown-item" data-value="normalize" onclick="selectAiMode(this)">AI Normalize</div>
+                  <div class="ai-dropdown-item" data-value="generalize" onclick="selectAiMode(this)">AI Generalize</div>
+                  <div class="ai-dropdown-item" data-value="extraction" onclick="selectAiMode(this)">AI Extraction</div>
+                  <div class="ai-dropdown-item" data-value="validation" onclick="selectAiMode(this)">AI Validation</div>
+                </div>
+                <select id="aiReviewMode" style="display:none;" onchange="toggleAiReviewMode()">
+                  <option value="diagnostics">AI Diagnostics</option>
+                  <option value="distill">AI Distill</option>
+                  <option value="scoring">AI Filter</option>
+                  <option value="normalize">AI Normalize</option>
+                  <option value="generalize">AI Generalize</option>
+                  <option value="extraction">AI Extraction</option>
+                  <option value="validation">AI Validation</option>
+                </select>
+              </div>
+              <button class="btn btn-alt" style="padding:5px 10px; font-size:10px; border-radius:6px;" id="btnClearScoringCache" onclick="clearAiReviewCache()">Clear Cache</button>
+            </div>
+            <button class="btn btn-go" style="padding:8px 22px; font-size:12px; font-weight:600; border-radius:8px; letter-spacing:0.02em;" id="btnRunAiReview" onclick="toggleAiRun()">Run AI Diagnostics</button>
+          </div>
+          <!-- Row 2: Stats -->
+          <div style="display:flex; align-items:center; gap:16px; padding:8px 16px; background:var(--bg); border-bottom:1px solid var(--border-soft); font-size:11px; color:var(--text3); min-height:32px;">
+            <!-- Diagnostics stats (default visible) -->
+            <div style="display:flex; align-items:center; gap:14px;" id="aiDiagStatusBar">
+              <span>Total <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiRunStatEntriesN">0</span></span>
+              <span id="aiRunStatRemoved">Removed <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiRunStatRemovedN">0</span></span>
+              <span>Cached <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiRunStatCachedN">0</span></span>
+              <span id="aiRunStatScoreWrap">Score <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiRunStatScoreN">—</span></span>
+              <span id="aiRunStatCompressionWrap" style="display:none;">Compression <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiRunStatCompressionN">—</span></span>
+            </div>
+            <!-- Scoring stats (hidden by default) -->
+            <div style="display:none; align-items:center; gap:12px;" id="aiScoringStatusBar">
+              <span>Tickets <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiScoreStatTicketsN">0</span></span>
+              <span>Cached <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiScoreStatCachedN">0</span></span>
+              <span>Scored <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiScoreStatScoredN">0</span></span>
+              <span>Keep <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiScoreStatKeepN">0</span></span>
+              <span>Drop <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiScoreStatRemoveN">0</span></span>
+              <span>Rate <span style="font-weight:600; color:var(--text); margin-left:2px;" id="aiScoreStatRateN">—</span></span>
+            </div>
+          </div>
+          <!-- Row 3: Scope & Options -->
+          <div style="display:flex; align-items:center; gap:12px; padding:8px 16px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:10px;" id="aiDiagOptions">
+              <label class="ai-check" style="font-size:11px;"><input type="radio" name="aiRunScope" value="total" checked style="accent-color:var(--accent-text);" onchange="localStorage.setItem('aiRunScope','total');toggleAiRunScopeInputs()"> Total</label>
+              <label class="ai-check" style="font-size:11px;"><input type="radio" name="aiRunScope" value="test" style="accent-color:var(--accent-text);" onchange="localStorage.setItem('aiRunScope','test');toggleAiRunScopeInputs()"> Test</label>
+              <input type="text" id="aiTestSize" class="ai-input" value="30" min="1" max="500" style="text-align:center; width:36px; padding:3px 4px; font-size:11px; border-radius:6px;" onchange="localStorage.setItem('aiTestSize',this.value)">
+              <label class="ai-check" style="font-size:11px;"><input type="radio" name="aiRunScope" value="ids" style="accent-color:var(--accent-text);" onchange="localStorage.setItem('aiRunScope','ids');toggleAiRunScopeInputs()"> IDs</label>
+              <input type="text" id="aiTicketIds" class="ai-input" placeholder="e.g. 100122, 102750" style="width:130px; padding:3px 6px; display:none; font-size:11px; border-radius:6px;" onchange="localStorage.setItem('aiTicketIds',this.value)">
+              <div style="width:1px; height:14px; background:var(--border); margin:0 2px;" id="aiDiagDivider1"></div>
+              <label class="ai-check" style="font-size:11px;" id="aiRunShowRemovedWrap"><input type="checkbox" id="aiRunShowRemoved" style="accent-color:var(--accent-text);"> Removed</label>
+              <div id="aiNormalizeParallelWrap" style="display:none; align-items:center; gap:10px;">
+                <label id="aiNormalizeParallelControl" style="display:flex; align-items:center; gap:3px; font-size:11px; color:var(--text3);">Parallel <input type="text" id="aiNormalizeParallel" class="ai-input" value="5" style="text-align:center; width:32px; padding:3px 2px; font-size:11px; border-radius:6px;" onchange="localStorage.setItem('aiNormalizeParallel',this.value)"></label>
+                <label id="aiNormalizeTargetWrap" style="display:flex; align-items:center; gap:3px; font-size:11px; color:var(--text3);">Clean <select id="aiNormalizeTarget" class="ai-input" style="padding:2px 4px; font-size:10px; border-radius:6px;" onchange="localStorage.setItem('aiNormalizeTarget',this.value)">
+                  <option value="problem">Problem</option>
+                  <option value="solution">Solution</option>
+                  <option value="both">Both</option>
+                </select></label>
+              </div>
+            </div>
+            <div style="display:none; align-items:center; gap:10px;" id="aiScoringDivider1"></div>
+            <div style="display:none; align-items:center; gap:10px;" id="aiScoringOptions">
+              <label class="ai-check" style="font-size:11px;"><input type="radio" name="aiScoreScope" value="total" checked style="accent-color:var(--accent-text);" onchange="localStorage.setItem('aiScoreScope',this.value);refreshScoringStatusBar()"> Total</label>
+              <label class="ai-check" style="font-size:11px;"><input type="radio" name="aiScoreScope" value="test" style="accent-color:var(--accent-text);" onchange="localStorage.setItem('aiScoreScope',this.value);refreshScoringStatusBar()"> Test</label>
+              <input type="text" id="aiScoreTestSize" class="ai-input" value="300" style="text-align:center; width:36px; padding:3px 4px; font-size:11px; border-radius:6px;" onchange="localStorage.setItem('aiScoreTestSize',this.value)">
+              <div style="width:1px; height:14px; background:var(--border);"></div>
+              <label style="display:flex; align-items:center; gap:3px; font-size:11px; color:var(--text3);">Parallel <input type="text" id="aiScoringParallel" class="ai-input" value="10" style="text-align:center; width:32px; padding:3px 2px; font-size:11px; border-radius:6px;" onchange="localStorage.setItem('aiScoringParallel',this.value)"></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline Progress (hidden until running) -->
+        <div class="section-card" id="aiRevProgress" style="display:none; padding:0; overflow:hidden;">
+          <div style="padding:10px 16px; border-bottom:1px solid var(--border-soft);">
+            <span style="font-size:11px; font-weight:600; color:var(--text2); letter-spacing:0.3px;">Pipeline Processing</span>
+          </div>
+          <div style="padding:14px 16px;">
+          <!-- Phase stepper (shown only during normalize) -->
+          <div class="norm-phases" id="normPhaseRow" style="display:none;">
+            <div class="norm-phase-step" id="normPhase_problem">Problem</div>
+            <span class="norm-phase-arrow">→</span>
+            <div class="norm-phase-step" id="normPhase_solution">Solution</div>
+          </div>
+          <div class="qa-progress-track"><div class="qa-progress-fill" id="aiRevProgressFill"></div></div>
+          <div class="qa-progress-meta">
+            <span id="aiRevStage">Initializing...</span>
+            <span id="aiRevPct">0%</span>
+          </div>
+          <div class="qa-log" id="aiRevLog" style="max-height:200px;"></div>
+          <!-- Filter Summary (shown after scoring completes) -->
+          <div id="aiScoringSummary" style="display:none; margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
+            <div style="font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">Filter Summary</div>
+            <div id="scoringStatsRow" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px;">
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;">Total</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="scoringStatTotal">0</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;">Scored</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="scoringStatScored">0</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;">Keep</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="scoringStatKeep">0</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;">Drop</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="scoringStatDrop">0</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
+              <button class="btn btn-go" style="padding:10px 28px; font-size:13px;" onclick="_downloadScoringResult('kept')">Download Keep Only</button>
+              <button class="btn btn-alt" style="padding:10px 28px; font-size:13px;" onclick="_downloadScoringResult('all')">Download All</button>
+              <button class="btn btn-alt" id="btnRerunAudit" style="padding:10px 28px; font-size:13px; display:none;" onclick="runPostScoringPipeline()">Rerun Audit</button>
+            </div>
+          </div>
+          <!-- AI Step Summary -->
+          <div id="aiNormalizeSummary" style="display:none; margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
+            <div style="font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;" id="aiSummaryTitle">AI Summary</div>
+            <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:10px;">
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;" id="aiSummaryLabel1">Total</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="normStatTotal">0</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;" id="aiSummaryLabel2">Problem</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="normStatProbChanged">—</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;" id="aiSummaryLabel3">Solution</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="normStatSolChanged">—</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;" id="aiSummaryLabel4">Cached</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="normStatCached">0</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;" id="aiSummaryLabel5">Compression</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="normStatCompression">—</div>
+              </div>
+              <div style="text-align:center; padding:8px 0; background:var(--bg2); border-radius:6px;">
+                <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.3px;" id="aiSummaryLabel6">QA Invalid</div>
+                <div style="font-size:16px; font-weight:600; color:var(--text);" id="normStatInvalid">—</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
+              <button class="btn btn-go" style="padding:10px 28px; font-size:13px; display:none;" id="btnDownloadValidationKeep" onclick="_downloadValidationResult('kept')">Download Keep Only</button>
+              <button class="btn btn-go" style="padding:10px 28px; font-size:13px; display:none;" id="btnDownloadAiStep" onclick="_downloadNormalizeResult()">Download</button>
+            </div>
+          </div>
+          <!-- Post-Scoring Pipeline (Audit 1 → Refine → Audit 2 → Finalize) -->
+          <div id="pipelineReport" style="display:none; margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">
+            <div id="pipelineContent" style="font-size:13px; line-height:1.6; color:var(--text2);"></div>
+          </div>
+          </div><!-- /inner padding wrapper -->
+        </div>
+
+        <!-- Diagnostics Prompt Editor (shown when mode=diagnostics) -->
+        <div class="section-card" id="aiDiagPromptEditor" style="display:none; padding:0; overflow:hidden;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border-soft);">
+            <span style="font-size:11px; font-weight:600; color:var(--text2); letter-spacing:0.3px;">Diagnostics Prompt</span>
+            <button class="btn btn-alt" style="padding:3px 10px; font-size:10px; border-radius:6px;" onclick="resetDiagPrompt()">Reset</button>
+          </div>
+          <textarea id="diagCustomPrompt" style="width:100%; min-height:140px; max-height:300px; font-family:'SF Mono',SFMono-Regular,Consolas,monospace !important; font-size:11px; line-height:1.5; padding:12px 16px; border:none; border-bottom:1px solid var(--border-soft); background:var(--bg); color:var(--text); resize:vertical; box-sizing:border-box; outline:none;" placeholder="Enter your diagnostics prompt..."></textarea>
+          <div style="padding:6px 16px 8px; font-size:10px; color:var(--text3);">System instruction used when analyzing the dataset.</div>
+        </div>
+
+        <!-- Diagnostics History (shown when there are past reports) -->
+        <div class="section-card" id="aiDiagHistory" style="display:none; padding:0; overflow:hidden;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border-soft);">
+            <span style="font-size:11px; font-weight:600; color:var(--text2); letter-spacing:0.3px;">Report History</span>
+            <div style="display:flex; gap:4px;">
+              <button class="btn btn-alt" style="padding:3px 10px; font-size:10px; border-radius:6px;" id="btnDiagCompare" onclick="toggleDiagCompare()" disabled>Compare</button>
+              <button class="btn btn-alt" style="padding:3px 10px; font-size:10px; border-radius:6px;" onclick="clearDiagHistory()">Clear</button>
+            </div>
+          </div>
+          <div id="diagHistoryList" style="display:flex; flex-direction:column; gap:2px; max-height:180px; overflow-y:auto; padding:8px 12px;"></div>
+        </div>
+
+        <!-- Diagnostics Report (hidden until diagnostics complete) -->
+        <div class="section-card" id="aiDiagReport" style="display:none; padding:0; overflow:hidden;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border-soft);">
+            <span style="font-size:11px; font-weight:600; color:var(--text2); letter-spacing:0.3px;" id="diagReportTitle">AI Diagnostics Report</span>
+            <div style="display:flex; gap:4px;">
+              <button class="btn btn-alt" style="padding:3px 12px; font-size:10px; border-radius:6px;" onclick="downloadDiagReport('json')">JSON</button>
+              <button class="btn btn-alt" style="padding:3px 12px; font-size:10px; border-radius:6px;" onclick="downloadDiagReport('txt')">TXT</button>
+            </div>
+          </div>
+          <!-- Quality Score -->
+          <div id="diagScoreBar" style="display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:1px solid var(--border-soft); background:var(--bg);">
+            <div style="font-size:10px; color:var(--text3); white-space:nowrap; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Quality</div>
+            <div style="flex:1; height:6px; background:var(--bg2); border-radius:3px; overflow:hidden;">
+              <div id="diagScoreFill" style="height:100%; border-radius:3px; transition:width .5s;"></div>
+            </div>
+            <div id="diagScoreVal" style="font-size:14px; font-weight:700; min-width:32px; text-align:right;"></div>
+          </div>
+          <!-- Panels -->
+          <div id="aiDiagPanels" style="display:flex; flex-direction:column; gap:10px; padding:14px 16px;"></div>
+        </div>
+
+        <!-- Diagnostics Comparison View (hidden by default) -->
+        <div class="section-card" id="aiDiagCompare" style="display:none; padding:0; overflow:hidden;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border-soft);">
+            <span style="font-size:11px; font-weight:600; color:var(--text2); letter-spacing:0.3px;">Report Comparison</span>
+            <button class="btn btn-alt" style="padding:3px 10px; font-size:10px; border-radius:6px;" onclick="closeDiagCompare()">Close</button>
+          </div>
+          <div style="display:flex; gap:8px; padding:10px 16px; border-bottom:1px solid var(--border-soft); background:var(--bg);">
+            <select id="diagCompareA" class="ai-input" style="flex:1; padding:5px 8px; font-size:11px; border-radius:6px;" onchange="renderDiagComparison()"></select>
+            <span style="font-size:11px; color:var(--text3); align-self:center;">vs</span>
+            <select id="diagCompareB" class="ai-input" style="flex:1; padding:5px 8px; font-size:11px; border-radius:6px;" onchange="renderDiagComparison()"></select>
+          </div>
+          <div id="diagCompareBody" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px 16px;"></div>
+        </div>
+
+      </div>
+    </div><!-- /ai sub-view -->
+      </div><!-- /merged-sub-panel ai -->
+    </section><!-- /view-quality-review -->
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- RAG & INGESTION — merged RAG Formatting + Ingestion       -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="kb-view" id="view-rag-ingestion">
+      <div class="merged-sub-tabs" style="padding:24px 24px 0;">
+        <button class="merged-sub-tab active" data-sub="rag" onclick="switchMergedSub(this,'rag-ingestion')">RAG Format</button>
+        <button class="merged-sub-tab" data-sub="ingest" onclick="switchMergedSub(this,'rag-ingestion')">Ingestion</button>
+      </div>
+      <div class="merged-sub-panel active" data-sub-panel="rag">
+    <div class="kb-sub-view" id="view-rag-format">
+      <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Upload & Source -->
+        <div class="section-card">
+          <div class="section-label">RAG Formatting</div>
+          <div style="font-size:12px; color:var(--text3); margin-bottom:12px;">
+            Transform validated knowledge entries into RAG-optimized embedding documents.
+            Best input is AI Validation keep-only output or an uploaded validated keep JSON.
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn btn-go" style="flex:0 0 auto; padding:9px 24px;" id="btnRagFromQa" onclick="ragFromQaPipeline()">Use Validation Keep Output</button>
+            <span style="font-size:11px; color:var(--text3);">or</span>
+            <div class="upload-zone" id="ragUploadZone" style="flex:1; padding:12px 16px; border-radius:8px;">
+              <input type="file" id="ragFileInput" accept=".json,application/json">
+              <div class="upload-title" id="ragUploadLabel">Upload validated keep KB JSON</div>
+            </div>
+            <button class="btn btn-go" style="flex:0 0 auto; padding:9px 24px; display:none;" id="btnRunRag" onclick="runRagFormat()">Run RAG Format</button>
+          </div>
+          <div class="file-info" id="ragFileInfo">
+            <span class="file-name" id="ragFileName"></span>
+            <span class="file-size" id="ragFileSize"></span>
+            <span class="file-rm" onclick="clearRagFile()">&times;</span>
+          </div>
+          <div style="margin-top:6px; font-size:11px; color:var(--text3);" id="ragStatus"></div>
+        </div>
+
+        <!-- Progress -->
+        <div class="section-card" id="ragProgressPanel" style="display:none;">
+          <div class="section-label">Formatting Progress</div>
+          <div class="qa-progress-track"><div class="qa-progress-fill" id="ragProgressFill"></div></div>
+          <div class="qa-progress-meta">
+            <span id="ragProgressStage">Initializing...</span>
+            <span id="ragProgressPct">0%</span>
+          </div>
+          <div class="qa-log" id="ragLog"></div>
+        </div>
+
+        <!-- Stats Summary -->
+        <div class="section-card" id="ragStatsPanel" style="display:none;">
+          <div class="section-label">RAG Dataset Statistics</div>
+          <div class="qa-stats-grid" id="ragStatsGrid"></div>
+        </div>
+
+        <!-- Tabbed Results: Browse / Sample / Log -->
+        <div class="section-card" id="ragResultsTabs" style="display:none;">
+          <div class="qa-tabs">
+            <button class="qa-tab active" data-ragtab="ragBrowseTab">Browse Documents</button>
+            <button class="qa-tab" data-ragtab="ragSampleTab">Sample Preview</button>
+            <button class="qa-tab" data-ragtab="ragLogTab">Processing Log</button>
+          </div>
+
+          <div class="qa-tab-content active" id="ragBrowseTab">
+            <input type="text" class="qa-search-box" id="ragSearchBox" placeholder="Search by doc_id, title, keywords, or problem...">
+            <div class="qa-entry-browser" id="ragBrowser"></div>
+          </div>
+
+          <div class="qa-tab-content" id="ragSampleTab">
+            <div id="ragSamplePreview" style="font-family:var(--mono); font-size:11px; background:var(--bg2); padding:14px; border-radius:8px; max-height:500px; overflow:auto; white-space:pre-wrap; color:var(--text2);"></div>
+          </div>
+
+          <div class="qa-tab-content" id="ragLogTab">
+            <div class="qa-log" id="ragResultsLog" style="max-height:400px;"></div>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="section-card" id="ragExportPanel" style="display:none;">
+          <div class="section-label">Export</div>
+          <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:4px;">
+            <button class="btn btn-go" style="padding:10px 28px; font-size:13px;" onclick="downloadRagDataset()">Download RAG Dataset</button>
+            <button class="btn btn-alt" style="padding:10px 28px; font-size:13px;" onclick="downloadRagEmbeddingTexts()">Download Embedding Texts</button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /rag sub-view -->
+      </div><!-- /merged-sub-panel rag -->
+
+      <div class="merged-sub-panel" data-sub-panel="ingest">
+    <div class="kb-sub-view" id="view-ingestion">
+      <div class="infra-wrap">
+        <div class="section-card">
+          <div class="section-label">Ingestion & Embedding</div>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept=".json,application/json">
+            <div class="upload-title">Drop JSON here or <strong>browse</strong></div>
+            <div class="upload-hint">JSON dataset (single or array)</div>
+          </div>
+          <div class="file-info" id="fileInfo">
+            <span class="file-name" id="fileName"></span>
+            <span class="file-size" id="fileSize"></span>
+            <span class="file-rm" onclick="clearFile()">&times;</span>
+          </div>
+          <div class="ingest-toolbar">
+            <div class="ingest-note">
+              <strong>Replace</strong> rebuilds the collection. <strong>Add</strong> appends new tickets and replaces older vectors when <code>ticket_id</code> matches.
+            </div>
+            <div class="actions ingest-actions">
+              <button class="btn btn-go" id="btnIngestFile" onclick="startIngestionFile()" disabled>Upload & Replace</button>
+              <button class="btn btn-go" id="btnAppendFile" onclick="startIngestionFile('append')" disabled>Upload & Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-val" id="statTickets">0</div>
+          <div class="stat-lbl">Tickets</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="statChunks">0</div>
+          <div class="stat-lbl">Chunks</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="statEmbedded">0</div>
+          <div class="stat-lbl">Embedded</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val orange" id="statErrors">0</div>
+          <div class="stat-lbl">Errors</div>
+        </div>
+      </div>
+
+      <div class="prog">
+        <div class="prog-inner">
+          <div class="prog-top">
+            <span class="prog-label">Pipeline Progress</span>
+            <span class="prog-pct" id="progressPct">0%</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="progressFill"></div></div>
+          <div class="prog-phase" id="phaseLabel">Idle</div>
+        </div>
+      </div>
+
+      <div class="infra-wrap" style="padding-top:0;">
+        <div class="section-card" style="margin-bottom:12px;">
+          <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span>Uploaded Files</span>
+            <button class="btn btn-alt" type="button" style="padding:4px 10px; min-height:0; font-size:11px;" onclick="refreshUploadedFiles()">Refresh</button>
+          </div>
+          <div class="file-history-list" id="fileHistoryList">
+            <div class="file-history-empty">No uploaded files yet</div>
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-label">Recent Jobs</div>
+          <div class="jobs-list" id="jobsList">
+            <div class="jobs-empty">No jobs yet</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="log-wrap">
+        <div class="log-head">
+          <span class="log-title">Ingestion Log <span class="live" id="liveIndicator">LIVE</span></span>
+          <button class="log-clear" onclick="clearLogs()">Clear</button>
+        </div>
+        <div class="log-body" id="logBody">
+          <div class="log-row">
+            <span class="log-t">--:--:--</span>
+            <span class="log-lv info">INFO</span>
+            <span class="log-m">Ready. Upload JSON to start ingestion.</span>
+          </div>
+        </div>
+      </div>
+    </div><!-- /ingestion sub-view -->
+      </div><!-- /merged-sub-panel ingest -->
+    </section><!-- /view-rag-ingestion -->
+
+    <section class="kb-view" id="view-llm-evaluation">
+      <div class="embed-wrap">
+        <div class="embed-card">
+          <div class="embed-head">LLM Evaluation</div>
+          <iframe class="embed-frame" src="llm-evaluation.html?embed=1" title="LLM Evaluation"></iframe>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="deleteSourceConfirmOverlay" class="confirm-overlay" onclick="if(event.target===this)closeDeleteSourceConfirm()">
+  <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="deleteSourceConfirmTitle">
+    <h3 class="confirm-title" id="deleteSourceConfirmTitle">Delete Ingested Data?</h3>
+    <p class="confirm-copy">This will remove vectors that were ingested using this file name.</p>
+    <div class="confirm-file" id="deleteSourceConfirmFile">—</div>
+    <p class="confirm-note">Only vectors whose metadata has the same <code>source_file</code> value will be deleted. Your local file on disk will stay untouched.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-alt" type="button" onclick="closeDeleteSourceConfirm()">Cancel</button>
+      <button class="btn btn-go" type="button" onclick="confirmDeleteIngestedSource()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="kb-shared-rules.js"></script>
+<script src="shared.js"></script>
+<script src="cleaner-header-strip.js"></script>
+<script src="cleaner-footer-analysis.js"></script>
+<script src="cleaner-boundary-detect.js"></script>
+<script src="shared-cleaner-helpers.js?v=20260420-2"></script>
+<script src="shared-cleaner-engine.js?v=20260420-2"></script>
+<script src="shared-ticket-body-cleaner.js?v=20260420-2"></script>
+<script src="kb-main.js" defer></script>
+<script src="kb-ui.js" defer></script>
+<script src="kb-pipeline.js" defer></script>
+<script src="kb-qa.js" defer></script>
+<script src="kb-ai-review.js" defer></script>
+<script>
+  // Seed initial KB view before DOM loads (before external scripts load)
+  (function seedKbViewEarly() {
+    try {
+      const views = ['overview', 'analysis', 'cleaning', 'quality-review', 'rag-ingestion', 'llm-evaluation'];
+      const rawHash = String(window.location.hash || '').replace(/^#/, '').trim();
+      let hashView = '';
+      if (views.includes(rawHash)) {
+        hashView = rawHash;
+      } else if (rawHash.startsWith('kb=')) {
+        const candidate = rawHash.slice(3);
+        if (views.includes(candidate)) hashView = candidate;
+      }
+      let memoryView = '';
+      try {
+        const rawMemory = localStorage.getItem('kb_ui_memory');
+        const parsed = rawMemory ? JSON.parse(rawMemory) : null;
+        if (views.includes(parsed?.activeView)) memoryView = parsed.activeView;
+      } catch (_e) {}
+      document.documentElement.setAttribute('data-kb-view', hashView || memoryView || 'overview');
+    } catch (_e) {}
+  })();
+</script>
+<script>
+if (window.location.protocol === 'file:') {
+  document.querySelectorAll('[data-file-href]').forEach(function(link) {
+    link.setAttribute('href', link.getAttribute('data-file-href'));
+  });
+}
+</script>
+</body>
+</html>
